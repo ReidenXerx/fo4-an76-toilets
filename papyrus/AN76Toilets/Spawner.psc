@@ -28,10 +28,16 @@ Int Property MaxSpawns = 48 Auto Const
 
 Int Property TICK_TIMER = 1 AutoReadOnly
 Int Property AN76_BATHROOM_QUEST = 0x03B902 AutoReadOnly
+Int Property AN76_ESSENTIALS_QUEST = 0x001EE2 AutoReadOnly   ; Flashy_EssentialsMain (the mod itself)
+Int Property AN76_NEEDS_QUEST = 0x001EDD AutoReadOnly        ; Flashy_NeedsMain (the needs system)
+Int Property AN76_CAMPING_QUEST = 0x007B72 AutoReadOnly      ; Flashy_CampingSystem
+Int Property AN76_TOILET_ON = 0x03B8FB AutoReadOnly          ; GlobalVariable Flashy_NeedsHygieneToilet
+Int Property MQ102_ID = 0x01CC2A AutoReadOnly                 ; Fallout4.esm MQ102, AN76's own "left the vault" test
 
 ObjectReference[] _for
 ObjectReference[] _spawned
 Int _lastState = -1   ; -1 unknown, 0 AN76's bathroom off, 1 on
+Bool _bootstrapped = False
 
 Event OnQuestInit()
 	Begin()
@@ -63,7 +69,56 @@ Bool Function BathroomOn()
 	Return bathroom != None && bathroom.IsRunning()
 EndFunction
 
+; ONCE per save (owner, 2026-09-29): anyone installing this add-on wants AN76 itself, its needs
+; system, its Bathroom Needs and its camping running, so they are started for them -- the same way
+; AN76's own MCM buttons start them. Never again after that: a module the player turns off later
+; stays off.
+Function Bootstrap()
+	Quest essentials = Game.GetFormFromFile(AN76_ESSENTIALS_QUEST, "Flashy_PersonalEssentials.esp") as Quest
+	If !essentials
+		Return   ; AN76 not installed: try again on a later tick
+	EndIf
+	Quest mq102 = Game.GetFormFromFile(MQ102_ID, "Fallout4.esm") as Quest
+	If mq102 && mq102.GetStage() <= 2
+		Return   ; still in the game's opening, as AN76 itself waits
+	EndIf
+	String started = ""
+	If !essentials.IsRunning()
+		essentials.Start()
+		started += " the mod itself,"
+	EndIf
+	Quest needs = Game.GetFormFromFile(AN76_NEEDS_QUEST, "Flashy_PersonalEssentials.esp") as Quest
+	If needs && !needs.IsRunning()
+		needs.Start()
+		started += " Advanced Needs,"
+	EndIf
+	Quest bathroom = Game.GetFormFromFile(AN76_BATHROOM_QUEST, "Flashy_PersonalEssentials.esp") as Quest
+	GlobalVariable toiletOn = Game.GetFormFromFile(AN76_TOILET_ON, "Flashy_PersonalEssentials.esp") as GlobalVariable
+	If bathroom && !bathroom.IsRunning()
+		If toiletOn
+			toiletOn.SetValue(1.0)
+		EndIf
+		bathroom.Start()
+		started += " Bathroom Needs,"
+	EndIf
+	Quest camping = Game.GetFormFromFile(AN76_CAMPING_QUEST, "Flashy_PersonalEssentials.esp") as Quest
+	If camping && !camping.IsRunning()
+		camping.Start()
+		started += " Camping,"
+	EndIf
+	_bootstrapped = True
+	If started != ""
+		Debug.Notification("AN76 Toilets started AN76's modules for you. Turn any off in AN76's MCM.")
+		Debug.Trace("AN76 Toilets: started" + started + " once for this save", 0)
+	Else
+		Debug.Trace("AN76 Toilets: AN76's modules were already running - nothing started", 0)
+	EndIf
+EndFunction
+
 Function Tick()
+	If !_bootstrapped
+		Bootstrap()
+	EndIf
 	If !BathroomOn()
 		If _lastState != 0
 			Debug.Trace("AN76 Toilets: AN76's Bathroom Needs are off (or AN76 is not installed) - nothing placed", 0)
