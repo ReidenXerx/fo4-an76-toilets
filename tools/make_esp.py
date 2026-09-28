@@ -49,25 +49,32 @@ SOUNDS = {
     'FartShort': ['fart_short'], 'FartLong': ['fart_long'], 'FartWet': ['fart_wet'],
     'Plop': ['plop'], 'Explosive': ['explosive'],
     'Paper': ['paper'], 'ZipDown': ['zip/down'], 'ZipUp': ['zip/up'], 'Stream': ['urinal'],
-    'AccidentPoop': ['accident/accident_1'], 'AccidentPee': ['accident/accident_2'], 'Flies': ['flies'],
+    'AccidentPoop': ['accident/accident_1'], 'AccidentPee': ['accident/accident_2'], 'Squelch': ['squelch'],
 }
 SOUND_ROOT = pathlib.Path(__file__).resolve().parents[1] / 'sounds' / 'src'
 
-# Voices: spoken through dialogue (Say) so the mouth moves with a .lip, not played as sound effects.
-# One topic with one line per clip; the script picks the clip. set -> (clip folder under voice/src,
-# who speaks it, subtitle, the text LipGenerator aligns the mouth to -- chosen by measuring: a single
-# long vowel ('Aaaaah') gives LipGenerator nothing to align and a near-empty .lip, 194 bytes).
-# (2026-09-29: strain, relief, screams and gags were sound effects until then; their SNDR ids stay retired.)
+# Voices: spoken through dialogue (Say) so the face moves with the line, not played as sound effects.
+# One topic with one line per clip; the script picks the clip. set -> (clip folder under voice/src, who
+# speaks it, subtitle, the text LipGenerator shapes the mouth from, the line's emotion).
+# Owner 2026-09-29: a scream is a held open mouth and a fear face, not talking. So the lip text of a
+# scream or roar is ONE long vowel (LipGenerator holds one open phoneme for the whole clip; a word-like
+# text makes the mouth chatter), and the fear comes from the line's emotion: TRDA's first field, an
+# AnimFaceArchetype keyword, as on 36k vanilla lines. The face falls back to normal when the line ends.
+# (Strain, relief, screams and gags were sound effects before 2026-09-29; their SNDR ids stay retired.)
+FACE_AFRAID = 0x0FA84B     # AnimFaceArchetypeAfraid
+FACE_DISGUST = 0x0C8674    # AnimFaceArchetypeDisgust
+FACE_IN_PAIN = 0x100286    # AnimFaceArchetypeInPain
+FACE_RELIEVED = 0x18E863   # AnimFaceArchetypeRelieved
 VOICE_ROOT = pathlib.Path(__file__).resolve().parents[1] / 'voice' / 'src'
 VOICE = {
-    'ScreamMale': ('scream_m', 'npc-male', 'AAAAAAH!', 'Ahh! Oh God! Ahh!'),
-    'ScreamFemale': ('scream_f', 'npc-female', 'AAAAAAH!', 'Ahh! Oh God! Ahh!'),
-    'GagMale': ('gag_m', 'npc-male', '*gags*', 'Ugh hhk bleh'),
-    'GagFemale': ('gag_f', 'npc-female', '*gags*', 'Ugh hhk bleh'),
-    'StrainMale': ('strain_m', 'player-male', 'Nnnngh!', 'Hnnngh! Ngh! Hnnnngh! Ugh!'),
-    'StrainFemale': ('strain_f', 'player-female', 'Nnnngh!', 'Hnnngh! Ngh! Hnnnngh! Ugh!'),
-    'ReliefMale': ('relief_m', 'player-male', 'Ahhhh...', 'Ahhhhhh oh'),
-    'ReliefFemale': ('relief_f', 'player-female', 'Ahhhh...', 'Ahhhhhh oh'),
+    'ScreamMale': ('scream_m', 'npc-male', 'AAAAAAH!', 'Aaaaaaaaaaaaaaah!', FACE_AFRAID),
+    'ScreamFemale': ('scream_f', 'npc-female', 'AAAAAAH!', 'Aaaaaaaaaaaaaaah!', FACE_AFRAID),
+    'GagMale': ('gag_m', 'npc-male', '*gags*', 'Ugh hhk bleh', FACE_DISGUST),
+    'GagFemale': ('gag_f', 'npc-female', '*gags*', 'Ugh hhk bleh', FACE_DISGUST),
+    'StrainMale': ('strain_m', 'player-male', 'Nnnngh!', 'Aaaaarrrrgh', FACE_IN_PAIN),
+    'StrainFemale': ('strain_f', 'player-female', 'Nnnngh!', 'Aaaaarrrrgh', FACE_IN_PAIN),
+    'ReliefMale': ('relief_m', 'player-male', 'Ahhhh...', 'Ahhhhhhhhh', FACE_RELIEVED),
+    'ReliefFemale': ('relief_f', 'player-female', 'Ahhhh...', 'Ahhhhhhhhh', FACE_RELIEVED),
 }
 PLAYER_VOICE_TYPES = {'player-male': ['PlayerVoiceMale01'], 'player-female': ['PlayerVoiceFemale01']}
 
@@ -86,7 +93,7 @@ def voice_types(speaker):
 def voice_lines(ids):
     # [(info form id, clip mp3, lip text, voice type folders)] for tools/make_voice.py.
     out = []
-    for name, (_, speaker, _, lip_text) in VOICE.items():
+    for name, (_, speaker, _, lip_text, _) in VOICE.items():
         for n, clip in enumerate(voice_clips(name), 1):
             out.append((ids[f'Line_{name}{n}'], clip, lip_text, voice_types(speaker)))
     return out
@@ -108,17 +115,19 @@ SETTINGS = [
     ('PanicOn', 1.0), ('PanicSeconds', 60.0), ('AftermathOn', 1.0),
 ]
 
-# The panic package: Fallout4.esm PACK DN136_Flee (001D4388) field for field -- built on the FleeFrom
-# template (00039A34), target the player (0x14), no conditions -- with an any-time schedule (FleeFrom's
-# PSDT) and a longer run: 3000 units, about 43 m, instead of 1000.
+# The panic package: Fallout4.esm PACK RETravelSC03_PrestonImpersonatorFlee (001AC7CA) field for field
+# -- vanilla's alias package that makes a non-hostile NPC run from the player, built on the FleeFrom
+# template (00039A34), target the player (0x14) -- minus its quest-stage condition, with an any-time
+# schedule and a 4000-unit (57 m) run instead of 100000. (2026-09-29: the first build copied DN136_Flee,
+# which no alias in the game uses; three NPCs got it and stood still.)
 PANIC_PACK = [
-    ('PKDT', '0020000012000200fffe0000'), ('PSDT', 'ffff00ffff00000000000000'),
+    ('PKDT', '003000001200020031f80000'), ('PSDT', 'ffff00ffff00000000000000'),
     ('PKCU', '08000000349a030001000000'),
     ('ANAM', '53696e676c6552656600'), ('PTDA', '000000001400000000000000'),
-    ('ANAM', '466c6f617400'), ('CNAM', '00803b45'),
+    ('ANAM', '466c6f617400'), ('CNAM', '00007a45'),
     ('ANAM', '466c6f617400'), ('CNAM', '00004843'),
     ('ANAM', '426f6f6c00'), ('CNAM', '00'), ('ANAM', '426f6f6c00'), ('CNAM', '01'),
-    ('ANAM', '426f6f6c00'), ('CNAM', '01'), ('ANAM', '426f6f6c00'), ('CNAM', '01'),
+    ('ANAM', '426f6f6c00'), ('CNAM', '01'), ('ANAM', '426f6f6c00'), ('CNAM', '00'),
     ('ANAM', '426f6f6c00'), ('CNAM', '01'),
     ('UNAM', '0e'), ('UNAM', '0a'), ('UNAM', '03'), ('UNAM', '07'), ('UNAM', '08'), ('UNAM', '0b'),
     ('UNAM', '0c'), ('UNAM', '0d'), ('XNAM', '0f'),
@@ -304,7 +313,7 @@ def build():
     branch_id = new_id('VoiceBranch')
     topics = {}
     dialogue = b''
-    for name, (_, _, subtitle, _) in VOICE.items():
+    for name, (_, _, subtitle, _, emotion) in VOICE.items():
         topics[name] = []
         for n, _clip in enumerate(voice_clips(name), 1):
             tid, iid = new_id(f'Topic_{name}{n}'), new_id(f'Line_{name}{n}')
@@ -317,7 +326,7 @@ def build():
             dial += field('SNAM', b'CUST')
             dial += field('TIFC', struct.pack('<I', 1))
             info = field('ENAM', struct.pack('<I', 2))
-            info += field('TRDA', bytes.fromhex('ffffffff' '01000000' '00010000' 'ffffffff' 'ffffffff'))
+            info += field('TRDA', struct.pack('<I', emotion) + bytes.fromhex('01000000' '00010000' 'ffffffff' 'ffffffff'))
             info += field('NAM1', zstring(subtitle))
             for sig in ('NAM2', 'NAM3', 'NAM4', 'NAM0'):
                 info += field(sig, b'\0')
@@ -361,7 +370,7 @@ def build():
     aq += field('VMAD', vmad('AN76Toilets:Accident', [
         ('Panicked', 1, struct.pack('<HhI', 0, 0, accident_id))] + [
         (n, 1, obj(ids['Sound_' + n])) for n in
-        ('AccidentPoop', 'AccidentPee', 'Flies')] + [
+        ('AccidentPoop', 'AccidentPee', 'Squelch')] + [
         (n + 'Lines', 11, topic_array(n)) for n in ('ScreamMale', 'ScreamFemale', 'GagMale', 'GagFemale')] + [
         (n, 1, obj(ids['Setting_' + n])) for n in ('PanicOn', 'PanicSeconds', 'AftermathOn')]))
     aq += field('DNAM', bytes.fromhex('110064670000000000000000'))

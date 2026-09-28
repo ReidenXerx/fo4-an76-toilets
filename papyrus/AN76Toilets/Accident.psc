@@ -18,7 +18,8 @@ Topic[] Property GagMaleLines Auto Const Mandatory
 Topic[] Property GagFemaleLines Auto Const Mandatory
 {Voices: spoken lines with lip sync, one topic per clip, in every vanilla human and ghoul voice type.
 An NPC with a voice type from another mod shows the subtitle without the audio.}
-Sound Property Flies Auto Const Mandatory
+Sound Property Squelch Auto Const Mandatory
+{Soggy pants, while the player walks. (Owner, 2026-09-29: the flies went.)}
 
 GlobalVariable Property PanicOn Auto Const Mandatory
 GlobalVariable Property PanicSeconds Auto Const Mandatory
@@ -29,7 +30,9 @@ Float Property PanicRadius = 1750.0 Auto Const
 Int Property MaxPanicked = 24 Auto Const
 Float Property GagRadius = 450.0 Auto Const
 {About 6 m: close enough to smell you.}
-Float Property StinkSeconds = 15.0 Auto Const
+Float Property StinkSeconds = 3.0 Auto Const
+{The aftermath's tick: a squelch when the player has walked, a gag every GagTicks ticks.}
+Int Property GagTicks = 5 AutoReadOnly
 
 Int Property PANIC_TIMER = 1 AutoReadOnly
 Int Property STINK_TIMER = 2 AutoReadOnly
@@ -63,6 +66,10 @@ Bool _odour = False
 Float _soiledUntil = 0.0
 Float _panicUntil = 0.0
 Actor _gagger = None
+Int _stinkTick = 0
+Float _lastX = 0.0
+Float _lastY = 0.0
+Bool _panicLogged = False
 
 Event OnQuestInit()
 	RegisterForRemoteEvent(Game.GetPlayer(), "OnPlayerLoadGame")
@@ -189,6 +196,7 @@ Function Panic(Actor akPlayer)
 	Debug.Trace("AN76 Toilets: panic - " + added + " people run from the player for " + PanicSeconds.GetValue() + " s", 0)
 	If Panicked.GetCount() > 0
 		_panicUntil = Utility.GetCurrentRealTime() + PanicSeconds.GetValue()
+		_panicLogged = False
 		StartTimer(3.0, PANIC_TIMER)
 	EndIf
 EndFunction
@@ -246,6 +254,19 @@ Function Speak(Actor akActor, Topic[] akLines)
 	akActor.Say(akLines[Utility.RandomInt(0, akLines.Length - 1)], None, False, None)
 EndFunction
 
+; Three seconds in: what each panicked NPC is actually running, and how far from the player.
+Function LogPanic()
+	Actor player = Game.GetPlayer()
+	Int i = 0
+	While i < Panicked.GetCount()
+		Actor a = Panicked.GetAt(i) as Actor
+		If a
+			Debug.Trace("AN76 Toilets: panic 3 s in - " + a + " package " + a.GetCurrentPackage() + ", " + (a.GetDistance(player) as Int) + " units from the player", 0)
+		EndIf
+		i += 1
+	EndWhile
+EndFunction
+
 Function EndPanic()
 	Actor[] calm = new Actor[0]
 	Int i = 0
@@ -298,10 +319,12 @@ Bool Function StillSoiled(Actor akPlayer)
 	Return Utility.GetCurrentGameTime() < _soiledUntil
 EndFunction
 
-; Every few seconds while soiled: flies, and someone close by gags and pulls a face.
+; Every few seconds while soiled: squelching when the player has walked, and now and then someone close
+; by gags and pulls a face.
 Function Stink()
 	Actor player = Game.GetPlayer()
-	If _gagger
+	_stinkTick += 1
+	If _gagger && _stinkTick % GagTicks == 2
 		Face(_gagger, 0)
 		_gagger = None
 	EndIf
@@ -315,10 +338,16 @@ Function Stink()
 		Return
 	EndIf
 	If AftermathOn.GetValueInt() == 1
-		If _sounds && Utility.RandomInt(0, 1) == 0
-			Flies.Play(player)
+		Float moved = Math.Sqrt(Math.Pow(player.GetPositionX() - _lastX, 2.0) + Math.Pow(player.GetPositionY() - _lastY, 2.0))
+		_lastX = player.GetPositionX()
+		_lastY = player.GetPositionY()
+		If _sounds && moved > 120.0 && moved < 3000.0
+			Squelch.Play(player)
 		EndIf
-		Actor near = SomeoneNear(player)
+		Actor near = None
+		If _stinkTick % GagTicks == 0
+			near = SomeoneNear(player)
+		EndIf
 		If near
 			Face(near, FACE_DISGUST)
 			If _sounds
@@ -364,6 +393,10 @@ Event OnTimer(Int aiTimerID)
 		If left <= 0.0
 			EndPanic()
 			Return
+		EndIf
+		If !_panicLogged
+			_panicLogged = True
+			LogPanic()
 		EndIf
 		; Someone screams again, now and then.
 		Actor a = Panicked.GetAt(Utility.RandomInt(0, Panicked.GetCount() - 1)) as Actor
