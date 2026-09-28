@@ -39,6 +39,7 @@ Float Property BusySeconds = 0.5 Auto Const
 
 Int Property WATCH_TIMER = 1 AutoReadOnly
 Int Property AN76_TOILET_STACK = 0x03B8FF AutoReadOnly     ; GlobalVariable Flashy_NeedsToiletStack
+Int Property AN76_NEXT_PISS = 0x04E8FE AutoReadOnly        ; ActorValue Flashy_NextPiss (game days)
 Int Property AN76_BUSY = 0x03B904 AutoReadOnly             ; Keyword Flashy_Keyword_BusyPlayer
 Int Property AN76_PAIN = 0x03B90C AutoReadOnly             ; MagicEffect Flashy_ME_BathroomPains
 Int Property AN76_PLAY_SOUNDS = 0x03FD6A AutoReadOnly      ; GlobalVariable Flashy_Hygiene_PlaySounds
@@ -47,6 +48,7 @@ Int Property AN76_FOOD_ILL = 0x001F34 AutoReadOnly         ; MagicEffect Flashy_
 Int Property AN76_RAD_ILL = 0x001F32 AutoReadOnly          ; MagicEffect Flashy_ME_RadPoisonIllness
 
 Bool _hadPain = False
+Int _lastStack = -1
 Float _painSince = 0.0
 Int _stage = -1
 Int _wantedStage = 0
@@ -84,7 +86,7 @@ Function Status()
 	If hud
 		icon = "icon registered " + hud.IsWidgetRegistered(WidgetSWF) + ", loaded " + hud.IsWidgetLoaded(WidgetSWF)
 	EndIf
-	Debug.Trace("AN76 Toilets: loaded - " + need + ", pain " + (pain && Game.GetPlayer().HasMagicEffect(pain)) + ", " + icon + ", icon stage " + _stage, 0)
+	Debug.Trace("AN76 Toilets: loaded - " + need + ", pain " + (pain && Game.GetPlayer().HasMagicEffect(pain)) + ", " + icon + ", icon stage " + _stage + ", " + Cooldown(), 0)
 EndFunction
 
 Function Begin()
@@ -247,12 +249,35 @@ Event OnTimer(Int aiTimerID)
 	EndIf
 
 	GlobalVariable stack = AN76(AN76_TOILET_STACK) as GlobalVariable
+	If stack && stack.GetValueInt() != _lastStack
+		If stack.GetValueInt() == 1
+			Debug.Trace("AN76 Toilets: AN76 took a meal - need pending, its 1-3 game hour timer is running", 0)
+		ElseIf _lastStack == 1
+			Debug.Trace("AN76 Toilets: AN76's need cleared (" + Cooldown() + ")", 0)
+		EndIf
+		_lastStack = stack.GetValueInt()
+	EndIf
 	If _going || (stack && stack.GetValueInt() == 1)
 		StartTimer(BusySeconds, WATCH_TIMER)
 	Else
 		StartTimer(WatchSeconds, WATCH_TIMER)
 	EndIf
 EndEvent
+
+; AN76 ignores anything eaten before NextPiss (game days): 6 game hours after the last visit, or
+; after its Bathroom Needs started.
+String Function Cooldown()
+	ActorValue nextPiss = AN76(AN76_NEXT_PISS) as ActorValue
+	If !nextPiss
+		Return "no cooldown value"
+	EndIf
+	Float now = Utility.GetCurrentGameTime()
+	Float until = Game.GetPlayer().GetValue(nextPiss)
+	If until > now
+		Return "AN76 cooldown: meals ignored for " + (((until - now) * 24.0) as Int) + " more game hours"
+	EndIf
+	Return "AN76 cooldown over: the next meal starts the need"
+EndFunction
 
 Bool Function Male(Actor akPlayer)
 	Return akPlayer.GetActorBase().GetSex() == 0
