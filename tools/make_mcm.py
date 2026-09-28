@@ -23,6 +23,10 @@ def form(ids, key):
 def build():
     _, ids = make_esp.build()
 
+    def button(text, key, function, help_text):
+        return {'text': text, 'type': 'button', 'help': help_text,
+                'action': {'type': 'CallFunction', 'form': form(ids, key), 'function': function}}
+
     def switcher(text, key, help_text):
         return {'text': text, 'type': 'switcher', 'help': help_text,
                 'valueOptions': {'sourceType': 'GlobalValue', 'sourceForm': form(ids, key)}}
@@ -82,12 +86,39 @@ def build():
                  'Broken, vault and house toilets become seats, and men can use urinals. '
                  'AN76\'s own toilets always work.'),
     ]
+    debug = [
+        {'text': 'Try every part without waiting for it. Buttons that play out in the world wait until '
+                 'you close the menu.', 'type': 'text'},
+        {'text': 'Status', 'type': 'section'},
+        button('Show status', 'SoundsQuest', 'DebugStatus',
+               "AN76's need and cooldown, the hold clock, the icon, the panic and the aftermath."),
+        {'text': 'The need', 'type': 'section'},
+        button('Need to go now', 'SoundsQuest', 'DebugNeedNow',
+               "Clears AN76's cooldown, sets its need and applies its pain, as if a meal had just come due."),
+        button('Skip to orange', 'SoundsQuest', 'DebugSkipToOrange',
+               'Sets the hold clock to the orange mark (sets the need first if there is none).'),
+        button('Accident now', 'SoundsQuest', 'DebugAccidentNow',
+               'The whole accident: sound, panic and aftermath, as the MCM switches say.'),
+        button("Clear AN76's cooldown", 'SoundsQuest', 'DebugClearCooldown',
+               'AN76 ignores meals for 6 game hours after each visit; this ends that now.'),
+        {'text': 'The parts', 'type': 'section'},
+        button('Panic now', 'AccidentQuest', 'DebugPanic', 'Everyone nearby screams and runs, without the accident.'),
+        button('Calm everyone', 'AccidentQuest', 'DebugCalm', 'Ends a panic now.'),
+        button('Soil me', 'AccidentQuest', 'DebugSoil', 'The aftermath alone: body odour, gnats, flies, gagging.'),
+        button('Clean me', 'AccidentQuest', 'DebugClean', "Ends the aftermath and washes off AN76's body odour."),
+        {'text': 'Voices and lip sync', 'type': 'section'},
+        button('Nearest person screams', 'AccidentQuest', 'DebugScream',
+               'Someone within 6 m screams, to check the voice and the mouth.'),
+        button('Player strains and sighs', 'SoundsQuest', 'DebugVoice',
+               "The player's straining, then relief. Watch in third person."),
+    ]
     return {
         'modName': 'AN76_Toilets',
         'displayName': 'AN76 Toilets',
         'minMcmVersion': 2,
         'pluginRequirements': [PLUGIN],
         'content': content,
+        'pages': [{'pageDisplayName': 'Debug', 'content': debug}],
     }
 
 

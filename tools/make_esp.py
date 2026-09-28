@@ -45,14 +45,51 @@ URINALS = [
 ]
 # Sound sets: property name -> clip folder(s) under Sound\FX\AN76Toilets (one clip is picked at random).
 SOUNDS = {
-    'Rumble': ['rumble'], 'StrainMale': ['strain_m'], 'StrainFemale': ['strain_f'],
+    'Rumble': ['rumble'],
     'FartShort': ['fart_short'], 'FartLong': ['fart_long'], 'FartWet': ['fart_wet'],
-    'Plop': ['plop'], 'Explosive': ['explosive'], 'ReliefMale': ['relief_m'], 'ReliefFemale': ['relief_f'],
+    'Plop': ['plop'], 'Explosive': ['explosive'],
     'Paper': ['paper'], 'ZipDown': ['zip/down'], 'ZipUp': ['zip/up'], 'Stream': ['urinal'],
-    'ScreamMale': ['scream_m'], 'ScreamFemale': ['scream_f'], 'GagMale': ['gag_m'], 'GagFemale': ['gag_f'],
     'AccidentPoop': ['accident/accident_1'], 'AccidentPee': ['accident/accident_2'], 'Flies': ['flies'],
 }
 SOUND_ROOT = pathlib.Path(__file__).resolve().parents[1] / 'sounds' / 'src'
+
+# Voices: spoken through dialogue (Say) so the mouth moves with a .lip, not played as sound effects.
+# One topic with one line per clip; the script picks the clip. set -> (clip folder under voice/src,
+# who speaks it, subtitle, the text LipGenerator aligns the mouth to -- chosen by measuring: a single
+# long vowel ('Aaaaah') gives LipGenerator nothing to align and a near-empty .lip, 194 bytes).
+# (2026-09-29: strain, relief, screams and gags were sound effects until then; their SNDR ids stay retired.)
+VOICE_ROOT = pathlib.Path(__file__).resolve().parents[1] / 'voice' / 'src'
+VOICE = {
+    'ScreamMale': ('scream_m', 'npc-male', 'AAAAAAH!', 'Ahh! Oh God! Ahh!'),
+    'ScreamFemale': ('scream_f', 'npc-female', 'AAAAAAH!', 'Ahh! Oh God! Ahh!'),
+    'GagMale': ('gag_m', 'npc-male', '*gags*', 'Ugh hhk bleh'),
+    'GagFemale': ('gag_f', 'npc-female', '*gags*', 'Ugh hhk bleh'),
+    'StrainMale': ('strain_m', 'player-male', 'Nnnngh!', 'Hnnngh! Ngh! Hnnnngh! Ugh!'),
+    'StrainFemale': ('strain_f', 'player-female', 'Nnnngh!', 'Hnnngh! Ngh! Hnnnngh! Ugh!'),
+    'ReliefMale': ('relief_m', 'player-male', 'Ahhhh...', 'Ahhhhhh oh'),
+    'ReliefFemale': ('relief_f', 'player-female', 'Ahhhh...', 'Ahhhhhh oh'),
+}
+PLAYER_VOICE_TYPES = {'player-male': ['PlayerVoiceMale01'], 'player-female': ['PlayerVoiceFemale01']}
+
+
+def voice_clips(name):
+    return sorted((VOICE_ROOT / VOICE[name][0]).glob('*.mp3'))
+
+
+def voice_types(speaker):
+    if speaker in PLAYER_VOICE_TYPES:
+        return PLAYER_VOICE_TYPES[speaker]
+    table = json.loads((pathlib.Path(__file__).resolve().parent / 'voicetypes.json').read_text())
+    return table['male' if speaker == 'npc-male' else 'female']
+
+
+def voice_lines(ids):
+    # [(info form id, clip mp3, lip text, voice type folders)] for tools/make_voice.py.
+    out = []
+    for name, (_, speaker, _, lip_text) in VOICE.items():
+        for n, clip in enumerate(voice_clips(name), 1):
+            out.append((ids[f'Line_{name}{n}'], clip, lip_text, voice_types(speaker)))
+    return out
 # Cloned from Fallout4.esm SNDR HC_UIModsComponentsWater / OBJArmorStealthActivate: standard sound
 # type, the object sound category, the player's 3D output model; BNAM = no pitch shift, 5% pitch
 # variance, priority 128, 1 dB volume variance, no static attenuation.
@@ -126,6 +163,12 @@ def record(sig, form_id, blob, flags=0):
 def group(label, blob):
     return (b'GRUP' + struct.pack('<I', 24 + len(blob)) + label.encode('ascii')
             + struct.pack('<I', 0) + struct.pack('<IHH', 0, 0, 0) + blob)
+
+
+def child_group(form_id, group_type, blob):
+    # A GRUP labelled with a form id: type 10 = a quest's children, 7 = a topic's children.
+    return (b'GRUP' + struct.pack('<III', 24 + len(blob), form_id, group_type)
+            + struct.pack('<IHH', 0, 0, 0) + blob)
 
 
 def obj(form_id):
@@ -254,12 +297,49 @@ def build():
 
     pack_id = new_id('PanicFlee')
     accident_id = new_id('AccidentQuest')
+
+    # The voices: one Dialogue Branch owning a topic per clip, each with one line, all in the accident
+    # quest (start-game enabled, so Say finds them). Shapes from fo4-rapport tools/make_dialogue.py,
+    # verified spoken in game there; a topic outside a branch resolves and stays silent.
+    branch_id = new_id('VoiceBranch')
+    topics = {}
+    dialogue = b''
+    for name, (_, _, subtitle, _) in VOICE.items():
+        topics[name] = []
+        for n, _clip in enumerate(voice_clips(name), 1):
+            tid, iid = new_id(f'Topic_{name}{n}'), new_id(f'Line_{name}{n}')
+            topics[name].append(tid)
+            dial = field('EDID', zstring(f'AN76T_{name}{n}'))
+            dial += field('PNAM', struct.pack('<f', 50.0))
+            dial += field('BNAM', struct.pack('<I', branch_id))
+            dial += field('QNAM', struct.pack('<I', accident_id))
+            dial += field('DATA', struct.pack('<I', 0))
+            dial += field('SNAM', b'CUST')
+            dial += field('TIFC', struct.pack('<I', 1))
+            info = field('ENAM', struct.pack('<I', 2))
+            info += field('TRDA', bytes.fromhex('ffffffff' '01000000' '00010000' 'ffffffff' 'ffffffff'))
+            info += field('NAM1', zstring(subtitle))
+            for sig in ('NAM2', 'NAM3', 'NAM4', 'NAM0'):
+                info += field(sig, b'\0')
+            info += field('INAM', struct.pack('<I', 1))
+            dialogue += record('DIAL', tid, dial) + child_group(tid, 7, record('INFO', iid, info))
+    first_topic = topics[next(iter(VOICE))][0]
+    branch = field('EDID', zstring('AN76T_Voices'))
+    branch += field('QNAM', struct.pack('<I', accident_id))
+    branch += field('TNAM', struct.pack('<I', 0))
+    branch += field('DNAM', struct.pack('<I', 1))
+    branch += field('SNAM', struct.pack('<I', first_topic))
+    dialogue = record('DLBR', branch_id, branch) + dialogue
+
+    def topic_array(name):
+        return struct.pack('<I', len(topics[name])) + b''.join(obj(t) for t in topics[name])
+
     sounds_quest_id = new_id('SoundsQuest')
     sq = field('EDID', zstring('AN76T_Sounds'))
     sq += field('VMAD', vmad('AN76Toilets:Sounds', [
         (n, 1, obj(ids['Sound_' + n])) for n in
-        ('Rumble', 'StrainMale', 'StrainFemale', 'FartShort', 'FartLong', 'FartWet', 'Plop',
-         'Explosive', 'ReliefMale', 'ReliefFemale', 'Paper')] + [
+        ('Rumble', 'FartShort', 'FartLong', 'FartWet', 'Plop', 'Explosive', 'Paper')] + [
+        (n + 'Lines', 11, topic_array(n)) for n in ('StrainMale', 'StrainFemale', 'ReliefMale', 'ReliefFemale')] + [
         ('IconOn', 1, obj(ids['Setting_IconOn'])), ('IconX', 1, obj(ids['Setting_IconX'])),
         ('IconNudgeX', 1, obj(ids['Setting_IconNudgeX'])), ('IconNudgeY', 1, obj(ids['Setting_IconNudgeY'])),
         ('IconY', 1, obj(ids['Setting_IconY'])), ('IconScale', 1, obj(ids['Setting_IconScale'])),
@@ -281,7 +361,8 @@ def build():
     aq += field('VMAD', vmad('AN76Toilets:Accident', [
         ('Panicked', 1, struct.pack('<HhI', 0, 0, accident_id))] + [
         (n, 1, obj(ids['Sound_' + n])) for n in
-        ('AccidentPoop', 'AccidentPee', 'ScreamMale', 'ScreamFemale', 'GagMale', 'GagFemale', 'Flies')] + [
+        ('AccidentPoop', 'AccidentPee', 'Flies')] + [
+        (n + 'Lines', 11, topic_array(n)) for n in ('ScreamMale', 'ScreamFemale', 'GagMale', 'GagFemale')] + [
         (n, 1, obj(ids['Setting_' + n])) for n in ('PanicOn', 'PanicSeconds', 'AftermathOn')]))
     aq += field('DNAM', bytes.fromhex('110064670000000000000000'))
     aq += field('NEXT', b'')
@@ -296,7 +377,7 @@ def build():
     aq += field('ALPC', struct.pack('<I', pack_id))
     aq += field('VTCK', struct.pack('<I', 0))
     aq += field('ALED', b'')
-    quest_rec += record('QUST', accident_id, aq)
+    quest_rec += record('QUST', accident_id, aq) + child_group(accident_id, 10, dialogue)
 
     for fid in ids.values():
         if not 0x800 <= (fid & 0xFFFFFF) <= 0xFFF:

@@ -12,10 +12,12 @@ RefCollectionAlias Property Panicked Auto Const Mandatory
 
 Sound Property AccidentPoop Auto Const Mandatory
 Sound Property AccidentPee Auto Const Mandatory
-Sound Property ScreamMale Auto Const Mandatory
-Sound Property ScreamFemale Auto Const Mandatory
-Sound Property GagMale Auto Const Mandatory
-Sound Property GagFemale Auto Const Mandatory
+Topic[] Property ScreamMaleLines Auto Const Mandatory
+Topic[] Property ScreamFemaleLines Auto Const Mandatory
+Topic[] Property GagMaleLines Auto Const Mandatory
+Topic[] Property GagFemaleLines Auto Const Mandatory
+{Voices: spoken lines with lip sync, one topic per clip, in every vanilla human and ghoul voice type.
+An NPC with a voice type from another mod shows the subtitle without the audio.}
 Sound Property Flies Auto Const Mandatory
 
 GlobalVariable Property PanicOn Auto Const Mandatory
@@ -32,6 +34,10 @@ Float Property StinkSeconds = 15.0 Auto Const
 Int Property PANIC_TIMER = 1 AutoReadOnly
 Int Property STINK_TIMER = 2 AutoReadOnly
 Int Property FACE_TIMER = 3 AutoReadOnly
+Int Property DEBUG_PANIC_TIMER = 10 AutoReadOnly
+Int Property DEBUG_SOIL_TIMER = 11 AutoReadOnly
+Int Property DEBUG_SCREAM_TIMER = 12 AutoReadOnly
+Int Property AN76_BATHING_POTION = 0x03303C AutoReadOnly ; Potion Flashy_Hygiene_BathingPotion
 
 ; Fallout4.esm
 Int Property KW_HUMAN = 0x02CB72 AutoReadOnly           ; Keyword ActorTypeHuman
@@ -230,10 +236,14 @@ Function Scream(Actor akActor)
 		Return
 	EndIf
 	If akActor.GetLeveledActorBase().GetSex() == 1
-		ScreamFemale.Play(akActor)
+		Speak(akActor, ScreamFemaleLines)
 	Else
-		ScreamMale.Play(akActor)
+		Speak(akActor, ScreamMaleLines)
 	EndIf
+EndFunction
+
+Function Speak(Actor akActor, Topic[] akLines)
+	akActor.Say(akLines[Utility.RandomInt(0, akLines.Length - 1)], None, False, None)
 EndFunction
 
 Function EndPanic()
@@ -313,9 +323,9 @@ Function Stink()
 			Face(near, FACE_DISGUST)
 			If _sounds
 				If near.GetLeveledActorBase().GetSex() == 1
-					GagFemale.Play(near)
+					Speak(near, GagFemaleLines)
 				Else
-					GagMale.Play(near)
+					Speak(near, GagMaleLines)
 				EndIf
 			EndIf
 			_gagger = near
@@ -369,5 +379,67 @@ Event OnTimer(Int aiTimerID)
 		Stink()
 	ElseIf aiTimerID == FACE_TIMER
 		Face(Game.GetPlayer(), 0)
+	ElseIf aiTimerID == DEBUG_PANIC_TIMER
+		_sounds = True
+		Panic(Game.GetPlayer())
+	ElseIf aiTimerID == DEBUG_SOIL_TIMER
+		_sounds = True
+		Soil(Game.GetPlayer())
+	ElseIf aiTimerID == DEBUG_SCREAM_TIMER
+		Actor near = SomeoneNear(Game.GetPlayer())
+		If near
+			_sounds = True
+			Face(near, FACE_AFRAID)
+			Scream(near)
+			Utility.Wait(3.0)
+			Face(near, 0)
+		Else
+			Debug.Notification("AN76 Toilets debug: nobody within 6 m.")
+		EndIf
 	EndIf
 EndEvent
+
+; ---- debug: the MCM's Debug page (timers run once the menu is closed) ---------------------------
+
+Function DebugPanic()
+	StartTimer(0.5, DEBUG_PANIC_TIMER)
+	Debug.Notification("AN76 Toilets debug: panic when you close the menu.")
+EndFunction
+
+Function DebugCalm()
+	EndPanic()
+	Debug.Notification("AN76 Toilets debug: everyone calmed down.")
+EndFunction
+
+Function DebugSoil()
+	StartTimer(0.5, DEBUG_SOIL_TIMER)
+	Debug.Notification("AN76 Toilets debug: soiled when you close the menu.")
+EndFunction
+
+; Washes the player the way AN76's bath does, so AN76's own body odour goes too.
+Function DebugClean()
+	If _odour
+		Potion bath = AN76(AN76_BATHING_POTION) as Potion
+		If bath
+			Game.GetPlayer().EquipItem(bath, False, True)
+		EndIf
+	EndIf
+	_soiledUntil = 0.0
+	_odour = False
+	_soiled = False
+	Debug.Notification("AN76 Toilets debug: clean.")
+EndFunction
+
+Function DebugScream()
+	StartTimer(0.5, DEBUG_SCREAM_TIMER)
+	Debug.Notification("AN76 Toilets debug: the nearest person screams when you close the menu.")
+EndFunction
+
+String Function DebugLine()
+	String line = "Panicking: " + Panicked.GetCount()
+	If Panicked.GetCount() > 0
+		line += " (" + ((_panicUntil - Utility.GetCurrentRealTime()) as Int) + " s left)"
+	EndIf
+	line += "\nSoiled: " + _soiled + ", AN76 body odour " + _odour
+	Return line
+EndFunction

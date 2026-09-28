@@ -6,16 +6,17 @@ AN76 puts its "busy" keyword on the player for the whole time, and pooping keeps
 where peeing takes 10. Honours AN76's "sounds" and "silent" switches.}
 
 Sound Property Rumble Auto Const Mandatory
-Sound Property StrainMale Auto Const Mandatory
-Sound Property StrainFemale Auto Const Mandatory
 Sound Property FartShort Auto Const Mandatory
 Sound Property FartLong Auto Const Mandatory
 Sound Property FartWet Auto Const Mandatory
 Sound Property Plop Auto Const Mandatory
 Sound Property Explosive Auto Const Mandatory
-Sound Property ReliefMale Auto Const Mandatory
-Sound Property ReliefFemale Auto Const Mandatory
 Sound Property Paper Auto Const Mandatory
+Topic[] Property StrainMaleLines Auto Const Mandatory
+Topic[] Property StrainFemaleLines Auto Const Mandatory
+Topic[] Property ReliefMaleLines Auto Const Mandatory
+Topic[] Property ReliefFemaleLines Auto Const Mandatory
+{The player's voice: spoken lines with lip sync (PlayerVoiceMale01 / PlayerVoiceFemale01).}
 
 String Property WidgetSWF = "AN76Toilets.swf" Auto Const
 {The toilet icon, a HUDFramework widget in Interface\.}
@@ -79,6 +80,8 @@ Bool _painTaken = False     ; we took AN76's pain away (accidents on)
 Float _heldHours = 0.0      ; game hours held, sleep left out
 Float _lastTick = 0.0       ; game days
 Bool _sleeping = False
+Bool _debugAccident = False  ; set by the MCM's Debug page, acted on once the menu is closed
+Bool _debugVoice = False
 
 Event OnQuestInit()
 	Begin()
@@ -257,6 +260,20 @@ Event OnTimer(Int aiTimerID)
 	EndIf
 
 	GlobalVariable stack = AN76(AN76_TOILET_STACK) as GlobalVariable
+	If _debugAccident
+		_debugAccident = False
+		HadAccident(player)
+	EndIf
+	If _debugVoice
+		_debugVoice = False
+		Strain(player)
+		Utility.Wait(3.0)
+		If Male(player)
+			Speak(player, ReliefMaleLines)
+		Else
+			Speak(player, ReliefFemaleLines)
+		EndIf
+	EndIf
 	Bool hasPain = pain && player.HasMagicEffect(pain)
 	If hasPain && !_hadPain
 		Debug.Trace("AN76 Toilets: AN76's bathroom pain started - you need to go", 0)
@@ -388,6 +405,84 @@ Function HadAccident(Actor akPlayer)
 	Accident.Trigger(poop, SoundsOn())
 EndFunction
 
+; ---- debug: the MCM's Debug page -------------------------------------------------------------
+; MCM calls these by name while its menu is open. Anything that plays out in the world (the accident,
+; the voices) is only flagged here and runs on the next watch tick, after the menu closes.
+
+; The need hits now, as AN76's own timer would do it: cooldown cleared, need set, AN76's pain applied.
+Function DebugNeedNow()
+	Actor player = Game.GetPlayer()
+	GlobalVariable stack = AN76(AN76_TOILET_STACK) as GlobalVariable
+	Potion painPotion = AN76(AN76_PAIN_POTION) as Potion
+	ActorValue nextPiss = AN76(AN76_NEXT_PISS) as ActorValue
+	If !stack || !painPotion || !nextPiss
+		Debug.MessageBox("AN76 Toilets: Advanced Needs 76 is not installed.")
+		Return
+	EndIf
+	player.SetValue(nextPiss, 0.0)
+	stack.SetValueInt(1)
+	player.EquipItem(painPotion, False, True)
+	Debug.Trace("AN76 Toilets: DEBUG - need now", 0)
+	Debug.Notification("AN76 Toilets debug: you need to go.")
+EndFunction
+
+; Holding it without waiting: the need is set if it is not, and the clock jumps.
+Function DebugUrgent()
+	If !_urgent
+		GlobalVariable stack = AN76(AN76_TOILET_STACK) as GlobalVariable
+		If stack
+			stack.SetValueInt(1)
+		EndIf
+		_urgent = True
+		_hadPain = True
+		_painSince = Utility.GetCurrentRealTime()
+	EndIf
+	_lastTick = Utility.GetCurrentGameTime()
+EndFunction
+
+Function DebugSkipToOrange()
+	DebugUrgent()
+	_heldHours = OrangeHours.GetValue()
+	Debug.Trace("AN76 Toilets: DEBUG - hold clock set to " + _heldHours + " game hours", 0)
+	Debug.Notification("AN76 Toilets debug: held " + _heldHours + " game hours - orange.")
+EndFunction
+
+Function DebugAccidentNow()
+	DebugUrgent()
+	_heldHours = AccidentHours.GetValue()
+	_debugAccident = True
+	Debug.Trace("AN76 Toilets: DEBUG - accident on the next tick", 0)
+	Debug.Notification("AN76 Toilets debug: the accident happens when you close the menu.")
+EndFunction
+
+Function DebugClearCooldown()
+	ActorValue nextPiss = AN76(AN76_NEXT_PISS) as ActorValue
+	If nextPiss
+		Game.GetPlayer().SetValue(nextPiss, 0.0)
+	EndIf
+	Debug.Notification("AN76 Toilets debug: AN76's cooldown cleared - the next meal counts.")
+EndFunction
+
+Function DebugVoice()
+	_debugVoice = True
+	Debug.Notification("AN76 Toilets debug: the player strains and sighs when you close the menu.")
+EndFunction
+
+Function DebugStatus()
+	GlobalVariable stack = AN76(AN76_TOILET_STACK) as GlobalVariable
+	MagicEffect pain = AN76(AN76_PAIN) as MagicEffect
+	String need = "AN76 not installed"
+	If stack
+		need = "AN76 need " + stack.GetValueInt() + ", AN76 pain " + (pain && Game.GetPlayer().HasMagicEffect(pain))
+	EndIf
+	String text = "AN76 TOILETS STATUS\n\n" + need + "\n" + Cooldown() + "\n\n"
+	text += "Holding it: " + _urgent + ", " + (((_heldHours * 10.0) as Int) as Float / 10.0) + " game hours"
+	text += " (orange at " + OrangeHours.GetValue() + ", accident at " + AccidentHours.GetValue() + ")\n"
+	text += "Accidents " + AccidentsOn.GetValueInt() + ", asleep " + _sleeping + ", pain taken " + _painTaken + "\n"
+	text += "Icon stage " + _stage + ", sounds " + SoundsOn() + "\n\n" + Accident.DebugLine()
+	Debug.MessageBox(text)
+EndFunction
+
 ; AN76 ignores anything eaten before NextPiss (game days): 6 game hours after the last visit, or
 ; after its Bathroom Needs started.
 String Function Cooldown()
@@ -453,11 +548,15 @@ Function Going(Actor akPlayer)
 	EndIf
 EndFunction
 
+Function Speak(Actor akSpeaker, Topic[] akLines)
+	akSpeaker.Say(akLines[Utility.RandomInt(0, akLines.Length - 1)], None, False, None)
+EndFunction
+
 Function Strain(Actor akPlayer)
 	If Male(akPlayer)
-		StrainMale.Play(akPlayer)
+		Speak(akPlayer, StrainMaleLines)
 	Else
-		StrainFemale.Play(akPlayer)
+		Speak(akPlayer, StrainFemaleLines)
 	EndIf
 EndFunction
 
@@ -466,9 +565,9 @@ Function Finished(Actor akPlayer)
 		Return
 	EndIf
 	If Male(akPlayer)
-		ReliefMale.Play(akPlayer)
+		Speak(akPlayer, ReliefMaleLines)
 	Else
-		ReliefFemale.Play(akPlayer)
+		Speak(akPlayer, ReliefFemaleLines)
 	EndIf
 	If _pooping
 		Utility.Wait(1.5)
