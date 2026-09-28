@@ -46,11 +46,18 @@ def build():
         switcher('Show the toilet icon', 'Setting_IconOn',
                  'A toilet beside the status icons while you need to go: yellow, then orange once the '
                  'pain has lasted one of AN76\'s pain intervals, red after three. Needs HUDFramework.'),
-        slider('Icon position X', 'Setting_IconX', 0.0, 1280.0, 10.0,
-               'Left to right on the 1280 x 720 HUD. Default 1120.'),
-        slider('Icon position Y', 'Setting_IconY', 0.0, 720.0, 10.0,
-               'Top to bottom on the 1280 x 720 HUD. Default 560.'),
-        slider('Icon size', 'Setting_IconScale', 0.5, 3.0, 0.1, 'Default 1.0.'),
+        {'text': 'The icon joins the status icons row by itself (hunger, thirst, sleep, AN76), in the next '
+                 'free slot, at their size, on the vanilla HUD and FallUI alike.', 'type': 'text'},
+        slider('Nudge left / right', 'Setting_IconNudgeX', -100.0, 100.0, 1.0,
+               'Pixels from its slot in the status row. Default 0.'),
+        slider('Nudge up / down', 'Setting_IconNudgeY', -100.0, 100.0, 1.0,
+               'Pixels from its slot in the status row. Default 0.'),
+        slider('Icon size', 'Setting_IconScale', 0.5, 3.0, 0.1,
+               'Relative to the status icons. Default 1.0.'),
+        slider('Fallback position X', 'Setting_IconX', 0.0, 1280.0, 10.0,
+               'Only for a HUD with no status icons row: left to right on the 1280 x 720 HUD.'),
+        slider('Fallback position Y', 'Setting_IconY', 0.0, 720.0, 10.0,
+               'Only for a HUD with no status icons row: top to bottom on the 1280 x 720 HUD.'),
         {'text': 'Sounds', 'type': 'section'},
         switcher('Bathroom sounds', 'Setting_SoundsOn',
                  'The stomach rumble when the need hits; straining, farts, plops and a sigh of relief '

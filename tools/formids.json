@@ -32,5 +32,7 @@
  "Setting_IconScale": "81E",
  "Setting_SoundsOn": "81F",
  "Setting_WorldToilets": "820",
- "AN76Toilets": "821"
+ "AN76Toilets": "821",
+ "Setting_IconNudgeX": "822",
+ "Setting_IconNudgeY": "823"
 }

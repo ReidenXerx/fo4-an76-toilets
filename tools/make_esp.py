@@ -64,6 +64,7 @@ SNDR_BNAM = bytes.fromhex('000580010000')
 SETTINGS = [
     ('IconOn', 1.0), ('IconX', 1120.0), ('IconY', 560.0), ('IconScale', 1.0),
     ('SoundsOn', 1.0), ('WorldToilets', 1.0),
+    ('IconNudgeX', 0.0), ('IconNudgeY', 0.0),
 ]
 
 # vanilla base (Fallout4.esm) -> our spawn key
@@ -235,6 +236,7 @@ def build():
         ('Rumble', 'StrainMale', 'StrainFemale', 'FartShort', 'FartLong', 'FartWet', 'Plop',
          'Explosive', 'ReliefMale', 'ReliefFemale', 'Paper')] + [
         ('IconOn', 1, obj(ids['Setting_IconOn'])), ('IconX', 1, obj(ids['Setting_IconX'])),
+        ('IconNudgeX', 1, obj(ids['Setting_IconNudgeX'])), ('IconNudgeY', 1, obj(ids['Setting_IconNudgeY'])),
         ('IconY', 1, obj(ids['Setting_IconY'])), ('IconScale', 1, obj(ids['Setting_IconScale'])),
         ('SoundsSetting', 1, obj(ids['Setting_SoundsOn']))]))
     sq += field('DNAM', bytes.fromhex('110064670000000000000000'))

@@ -223,13 +223,29 @@ def build_swf():
     return b'FWS' + bytes([10]) + struct.pack('<I', total) + head + body
 
 
+FFDEC = pathlib.Path(r'C:\Users\DuduPhudu\tools\ffdec\ffdec.jar')
+ROOT = pathlib.Path(__file__).resolve().parents[1]
+
+
 def main():
+    # 1. the frames and the art, with a minimal class (the hand-assembled ABC above);
+    # 2. JPEXS FFDec compiles widget/*.as over that class: the row-following AN76ToiletWidget.
+    import subprocess
     root = pathlib.Path(sys.argv[1] if len(sys.argv) > 1 else 'build/data')
     out = root / 'Interface' / 'AN76Toilets.swf'
     out.parent.mkdir(parents=True, exist_ok=True)
-    data = build_swf()
-    out.write_bytes(data)
-    print(f'{out}: {len(data)} bytes, 4 frames, document class {CLASS}')
+    skeleton = ROOT / 'build' / 'widget' / 'skeleton.swf'
+    skeleton.parent.mkdir(parents=True, exist_ok=True)
+    skeleton.write_bytes(build_swf())
+    if not FFDEC.is_file():
+        raise SystemExit(f'JPEXS FFDec not found at {FFDEC} (github.com/jindrapetrik/jpexs-decompiler)')
+    if out.exists():
+        out.unlink()
+    subprocess.run(['java', '-jar', str(FFDEC), '-importScript', str(skeleton), str(out), str(ROOT / 'widget')],
+                   check=True, capture_output=True)
+    if not out.is_file() or out.stat().st_size <= skeleton.stat().st_size:
+        raise SystemExit('FFDec did not compile widget/*.as into the widget')
+    print(f'{out}: {out.stat().st_size} bytes, 4 frames, {CLASS} compiled from widget/')
 
 
 if __name__ == '__main__':

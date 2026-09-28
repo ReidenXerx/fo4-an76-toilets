@@ -29,6 +29,9 @@ GlobalVariable Property IconOn Auto Const Mandatory
 GlobalVariable Property IconX Auto Const Mandatory
 GlobalVariable Property IconY Auto Const Mandatory
 GlobalVariable Property IconScale Auto Const Mandatory
+GlobalVariable Property IconNudgeX Auto Const Mandatory
+GlobalVariable Property IconNudgeY Auto Const Mandatory
+Int Property WIDGET_SET_NUDGE = 2 AutoReadOnly
 GlobalVariable Property SoundsSetting Auto Const Mandatory
 {MCM: the comedy sounds on or off.}
 
@@ -55,6 +58,8 @@ Int _wantedStage = 0
 Float _appliedX = -1.0
 Float _appliedY = -1.0
 Float _appliedScale = -1.0
+Float _appliedNudgeX = -9999.0
+Float _appliedNudgeY = -9999.0
 Bool _going = False
 Float _goingSince = 0.0
 Bool _pooping = False
@@ -124,22 +129,29 @@ Function HUD_WidgetLoaded(String asWidgetID)
 	EndIf
 EndFunction
 
-; MCM position and size, applied when they change.
+; MCM layout, applied when it changes. The icon joins the HUD's status-effect row by itself (the
+; widget reads the row every frame); the nudge and size are relative to that slot. X and Y are only the
+; fallback for a HUD with no such row.
 Function ApplyLayout()
 	Float x = IconX.GetValue()
 	Float y = IconY.GetValue()
 	Float s = IconScale.GetValue()
-	If x == _appliedX && y == _appliedY && s == _appliedScale
+	Float nx = IconNudgeX.GetValue()
+	Float ny = IconNudgeY.GetValue()
+	If x == _appliedX && y == _appliedY && s == _appliedScale && nx == _appliedNudgeX && ny == _appliedNudgeY
 		Return
 	EndIf
 	HUDFramework hud = HUD()
 	If hud && hud.IsWidgetRegistered(WidgetSWF)
 		hud.SetWidgetPosition(WidgetSWF, x, y, False)
-		hud.SetWidgetScale(WidgetSWF, s, s, False)
-		Debug.Trace("AN76 Toilets: icon at " + x + ", " + y + " scale " + s, 0)
+		hud.SetWidgetScale(WidgetSWF, 1.0, 1.0, False)
+		hud.SendMessage(WidgetSWF, WIDGET_SET_NUDGE, nx, ny, s, 0.0, 0.0, 0.0)
+		Debug.Trace("AN76 Toilets: icon nudge " + nx + ", " + ny + " size x" + s + " (fallback position " + x + ", " + y + ")", 0)
 		_appliedX = x
 		_appliedY = y
 		_appliedScale = s
+		_appliedNudgeX = nx
+		_appliedNudgeY = ny
 	EndIf
 EndFunction
 
