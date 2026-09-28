@@ -31,6 +31,7 @@ Int Property AN76_BATHROOM_QUEST = 0x03B902 AutoReadOnly
 
 ObjectReference[] _for
 ObjectReference[] _spawned
+Int _lastState = -1   ; -1 unknown, 0 AN76's bathroom off, 1 on
 
 Event OnQuestInit()
 	Begin()
@@ -63,8 +64,16 @@ EndFunction
 
 Function Tick()
 	If !BathroomOn()
+		If _lastState != 0
+			Debug.Trace("AN76 Toilets: AN76's Bathroom Needs are off (or AN76 is not installed) - nothing placed", 0)
+			_lastState = 0
+		EndIf
 		RemoveAll()
 		Return
+	EndIf
+	If _lastState != 1
+		Debug.Trace("AN76 Toilets: AN76's Bathroom Needs are on - world toilets become usable", 0)
+		_lastState = 1
 	EndIf
 	Actor player = Game.GetPlayer()
 	Prune(player)
@@ -73,6 +82,7 @@ Function Tick()
 	EndIf
 	Bool male = player.GetActorBase().GetSex() == 0
 	ObjectReference[] found = player.FindAllReferencesOfType(TargetList as Form, Radius)
+	Int before = _spawned.Length
 	Int i = 0
 	While i < found.Length && _spawned.Length < MaxSpawns
 		ObjectReference target = found[i]
@@ -87,6 +97,9 @@ Function Tick()
 		EndIf
 		i += 1
 	EndWhile
+	If _spawned.Length > before
+		Debug.Trace("AN76 Toilets: " + (_spawned.Length - before) + " placed (" + found.Length + " toilets and urinals in range, " + _spawned.Length + " live)", 0)
+	EndIf
 EndFunction
 
 Bool Function Upright(ObjectReference akTarget)
