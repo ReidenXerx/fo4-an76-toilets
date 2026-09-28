@@ -13,7 +13,10 @@ Event OnActivate(ObjectReference akActionRef)
 	If akActionRef == Game.GetPlayer()
 		ScriptObject bathroom = Bathroom()
 		If bathroom
+			Debug.Trace("AN76 Toilets: sat on " + GetBaseObject() + " - AN76 EnterToilet (xbox " + Xbox() + ")", 0)
 			bathroom.CallFunction("EnterToilet", new Var[0])
+		Else
+			Debug.Trace("AN76 Toilets: sat on " + GetBaseObject() + " but AN76's Bathroom Needs are not running", 0)
 		EndIf
 	EndIf
 EndEvent
@@ -22,6 +25,7 @@ Event OnExitFurniture(ObjectReference akActionRef)
 	If akActionRef == Game.GetPlayer()
 		ScriptObject bathroom = Bathroom()
 		If bathroom
+			Debug.Trace("AN76 Toilets: got up - AN76 ExitToilet (flush " + Flushable + ")", 0)
 			If Xbox()
 				Var[] args = new Var[1]
 				args[0] = Flushable

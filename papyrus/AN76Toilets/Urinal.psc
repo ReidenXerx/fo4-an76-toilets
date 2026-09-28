@@ -36,11 +36,13 @@ Event OnActivate(ObjectReference akActionRef)
 	EndIf
 	Quest bathroom = AN76(AN76_BATHROOM_QUEST) as Quest
 	If !bathroom || !bathroom.IsRunning() || player.IsInPowerArmor() || player.IsInCombat()
+		Debug.Trace("AN76 Toilets: urinal refused - bathroom running " + (bathroom && bathroom.IsRunning()) + ", power armor " + player.IsInPowerArmor() + ", combat " + player.IsInCombat(), 0)
 		Return
 	EndIf
 	GlobalVariable stack = AN76(AN76_TOILET_STACK) as GlobalVariable
 	ActorValue nextPiss = AN76(AN76_NEXT_PISS) as ActorValue
 	If !stack || stack.GetValueInt() != 1 || (nextPiss && Utility.GetCurrentGameTime() <= player.GetValue(nextPiss))
+		Debug.Trace("AN76 Toilets: urinal - no need yet (stack " + (stack && stack.GetValueInt()) + ")", 0)
 		Message dontNeed = AN76(AN76_DONT_NEED) as Message
 		If dontNeed
 			dontNeed.Show(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
@@ -48,7 +50,9 @@ Event OnActivate(ObjectReference akActionRef)
 		Return
 	EndIf
 	_busy = True
+	Debug.Trace("AN76 Toilets: urinal - peeing", 0)
 	Pee(player, bathroom)
+	Debug.Trace("AN76 Toilets: urinal - done, AN76 QuickRemoveNeed called", 0)
 	_busy = False
 EndEvent
 

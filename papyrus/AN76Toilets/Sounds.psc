@@ -99,6 +99,7 @@ EndFunction
 
 ; HUDFramework calls this by name whenever the widget (re)loads.
 Function HUD_WidgetLoaded(String asWidgetID)
+	Debug.Trace("AN76 Toilets: HUDFramework loaded widget " + asWidgetID, 0)
 	If asWidgetID == WidgetSWF
 		Int stage = _stage
 		_stage = -1
@@ -164,6 +165,7 @@ Event OnTimer(Int aiTimerID)
 
 	Bool hasPain = pain && player.HasMagicEffect(pain)
 	If hasPain && !_hadPain
+		Debug.Trace("AN76 Toilets: AN76's bathroom pain started - you need to go", 0)
 		_painSince = Utility.GetCurrentRealTime()
 		If SoundsOn()
 			Rumble.Play(player)
@@ -174,6 +176,7 @@ Event OnTimer(Int aiTimerID)
 
 	Bool isGoing = player.HasKeyword(busy)
 	If isGoing && !_going
+		Debug.Trace("AN76 Toilets: going (sounds " + SoundsOn() + ", sick " + Sick(player) + ")", 0)
 		_going = True
 		_goingSince = Utility.GetCurrentRealTime()
 		_pooping = False
@@ -183,6 +186,7 @@ Event OnTimer(Int aiTimerID)
 		If isGoing
 			Going(player)
 		Else
+			Debug.Trace("AN76 Toilets: finished after " + ((Utility.GetCurrentRealTime() - _goingSince) as Int) + " s, poop " + _pooping, 0)
 			Finished(player)
 			_going = False
 		EndIf
