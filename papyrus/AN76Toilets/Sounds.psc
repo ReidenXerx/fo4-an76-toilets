@@ -25,6 +25,13 @@ Float Property WidgetY = 560.0 Auto Const
 Int Property WIDGET_SET_STAGE = 1 AutoReadOnly
 Int Property AN76_PAIN_INTERVAL = 0x030A43 AutoReadOnly    ; GlobalVariable Flashy_Needs_ToiletPainTimer (s)
 
+GlobalVariable Property IconOn Auto Const Mandatory
+GlobalVariable Property IconX Auto Const Mandatory
+GlobalVariable Property IconY Auto Const Mandatory
+GlobalVariable Property IconScale Auto Const Mandatory
+GlobalVariable Property SoundsSetting Auto Const Mandatory
+{MCM: the comedy sounds on or off.}
+
 Float Property WatchSeconds = 3.0 Auto Const
 {How often to look while nothing is happening.}
 Float Property BusySeconds = 0.5 Auto Const
@@ -42,6 +49,10 @@ Int Property AN76_RAD_ILL = 0x001F32 AutoReadOnly          ; MagicEffect Flashy_
 Bool _hadPain = False
 Float _painSince = 0.0
 Int _stage = -1
+Int _wantedStage = 0
+Float _appliedX = -1.0
+Float _appliedY = -1.0
+Float _appliedScale = -1.0
 Bool _going = False
 Float _goingSince = 0.0
 Bool _pooping = False
@@ -92,7 +103,7 @@ Function SetupWidget()
 	_stage = -1
 	HUDFramework hud = HUD()
 	If hud && !hud.IsWidgetRegistered(WidgetSWF)
-		hud.RegisterWidget(Self, WidgetSWF, WidgetX, WidgetY, True, True)
+		hud.RegisterWidget(Self, WidgetSWF, IconX.GetValue(), IconY.GetValue(), True, True)
 		Debug.Trace("AN76 Toilets: toilet icon registered with HUDFramework", 0)
 	EndIf
 EndFunction
@@ -100,6 +111,7 @@ EndFunction
 ; HUDFramework calls this by name whenever the widget (re)loads.
 Function HUD_WidgetLoaded(String asWidgetID)
 	Debug.Trace("AN76 Toilets: HUDFramework loaded widget " + asWidgetID, 0)
+	_appliedX = -1.0
 	If asWidgetID == WidgetSWF
 		Int stage = _stage
 		_stage = -1
@@ -107,9 +119,32 @@ Function HUD_WidgetLoaded(String asWidgetID)
 	EndIf
 EndFunction
 
+; MCM position and size, applied when they change.
+Function ApplyLayout()
+	Float x = IconX.GetValue()
+	Float y = IconY.GetValue()
+	Float s = IconScale.GetValue()
+	If x == _appliedX && y == _appliedY && s == _appliedScale
+		Return
+	EndIf
+	HUDFramework hud = HUD()
+	If hud && hud.IsWidgetRegistered(WidgetSWF)
+		hud.SetWidgetPosition(WidgetSWF, x, y, False)
+		hud.SetWidgetScale(WidgetSWF, s, s, False)
+		Debug.Trace("AN76 Toilets: icon at " + x + ", " + y + " scale " + s, 0)
+		_appliedX = x
+		_appliedY = y
+		_appliedScale = s
+	EndIf
+EndFunction
+
 ; 0 hidden, 1 yellow (you need to go), 2 orange (a pain interval has passed), 3 red (three have).
 Function ShowStage(Int aiStage)
 	If aiStage < 0
+		aiStage = 0
+	EndIf
+	_wantedStage = aiStage
+	If IconOn.GetValueInt() == 0
 		aiStage = 0
 	EndIf
 	If aiStage == _stage
@@ -148,7 +183,7 @@ EndFunction
 Bool Function SoundsOn()
 	GlobalVariable sounds = AN76(AN76_PLAY_SOUNDS) as GlobalVariable
 	GlobalVariable silent = AN76(AN76_SILENT) as GlobalVariable
-	Return (!sounds || sounds.GetValueInt() == 1) && (!silent || silent.GetValueInt() == 0)
+	Return SoundsSetting.GetValueInt() == 1 && (!sounds || sounds.GetValueInt() == 1) && (!silent || silent.GetValueInt() == 0)
 EndFunction
 
 Event OnTimer(Int aiTimerID)
@@ -172,6 +207,7 @@ Event OnTimer(Int aiTimerID)
 		EndIf
 	EndIf
 	_hadPain = hasPain
+	ApplyLayout()
 	ShowStage(Urgency(hasPain))
 
 	Bool isGoing = player.HasKeyword(busy)

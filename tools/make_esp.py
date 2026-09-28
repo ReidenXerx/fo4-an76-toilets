@@ -58,6 +58,13 @@ SNDR_GNAM = bytes.fromhex('a1720100')
 SNDR_ONAM = bytes.fromhex('f3be0a00')
 SNDR_BNAM = bytes.fromhex('000580010000')
 
+# MCM settings: global -> default. The MCM page writes these directly (sourceType GlobalValue), as
+# AN76's own MCM does; the scripts read them every few seconds.
+SETTINGS = [
+    ('IconOn', 1.0), ('IconX', 1120.0), ('IconY', 560.0), ('IconScale', 1.0),
+    ('SoundsOn', 1.0), ('WorldToilets', 1.0),
+]
+
 # vanilla base (Fallout4.esm) -> our spawn key
 TARGETS = [
     (0x02CD27, 'Seat_Broken01'), (0x034A3F, 'Seat_Broken01'),
@@ -177,6 +184,17 @@ def build():
         blob += field('FNAM', struct.pack('<H', 0))
         acti += record('ACTI', fid, blob)
 
+    glob = b''
+    for name, default in SETTINGS:
+        gid = new_id('Setting_' + name)
+        blob = field('EDID', zstring('AN76T_' + name))
+        blob += field('FNAM', b'f')
+        blob += field('FLTV', struct.pack('<f', default))
+        glob += record('GLOB', gid, blob)
+
+    an76_list_id = new_id('AN76Toilets')
+    an76_list = record('FLST', an76_list_id, field('EDID', zstring('AN76T_AN76Toilets')))
+
     flst_id = new_id('TargetList')
     flst = field('EDID', zstring('AN76T_WorldToilets'))
     for base, _ in TARGETS:
@@ -194,6 +212,8 @@ def build():
         ('Spawns', 11, spawns),
         ('Urinals', 11, urinals),
         ('TargetList', 1, obj(flst_id)),
+        ('AN76ToiletList', 1, obj(an76_list_id)),
+        ('WorldToiletsOn', 1, obj(ids['Setting_WorldToilets'])),
     ]))
     quest += field('DNAM', bytes.fromhex('110064670000000000000000'))
     quest += field('NEXT', b'')
@@ -204,7 +224,10 @@ def build():
     sq += field('VMAD', vmad('AN76Toilets:Sounds', [
         (n, 1, obj(ids['Sound_' + n])) for n in
         ('Rumble', 'StrainMale', 'StrainFemale', 'FartShort', 'FartLong', 'FartWet', 'Plop',
-         'Explosive', 'ReliefMale', 'ReliefFemale', 'Paper')]))
+         'Explosive', 'ReliefMale', 'ReliefFemale', 'Paper')] + [
+        ('IconOn', 1, obj(ids['Setting_IconOn'])), ('IconX', 1, obj(ids['Setting_IconX'])),
+        ('IconY', 1, obj(ids['Setting_IconY'])), ('IconScale', 1, obj(ids['Setting_IconScale'])),
+        ('SoundsSetting', 1, obj(ids['Setting_SoundsOn']))]))
     sq += field('DNAM', bytes.fromhex('110064670000000000000000'))
     sq += field('NEXT', b'')
     quest_rec += record('QUST', sounds_quest_id, sq)
@@ -217,8 +240,8 @@ def build():
     header += field('CNAM', zstring(AUTHOR))
     header += field('MAST', zstring(MASTER))
     header += field('DATA', struct.pack('<Q', 0))
-    body = (group('SNDR', sndr) + group('ACTI', acti) + group('FURN', furn) + group('FLST', flst_rec)
-            + group('QUST', quest_rec))
+    body = (group('GLOB', glob) + group('SNDR', sndr) + group('ACTI', acti) + group('FURN', furn)
+            + group('FLST', flst_rec + an76_list) + group('QUST', quest_rec))
     return record('TES4', 0, header, flags=TES4_LIGHT) + body, ids
 
 

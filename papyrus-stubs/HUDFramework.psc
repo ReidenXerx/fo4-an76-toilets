@@ -23,5 +23,8 @@ EndFunction
 Function SetWidgetPosition(String asWidgetID, Float afX, Float afY, Bool abTemporary)
 EndFunction
 
+Function SetWidgetScale(String asWidgetID, Float afScaleX, Float afScaleY, Bool abTemporary)
+EndFunction
+
 Function SendMessage(String asWidgetID, Int aiCommand, Float arg1, Float arg2, Float arg3, Float arg4, Float arg5, Float arg6)
 EndFunction

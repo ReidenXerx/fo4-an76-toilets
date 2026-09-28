@@ -18,6 +18,10 @@ Form[] Property Urinals Auto Const Mandatory
 {The spawns that are urinals: spawned only for a male player.}
 FormList Property TargetList Auto Const Mandatory
 {The same bases as Targets, as the list FindAllReferencesOfType searches for.}
+FormList Property AN76ToiletList Auto Const Mandatory
+{Empty in the plugin; filled at run time with AN76's four toilets (AN76 is not a master).}
+GlobalVariable Property WorldToiletsOn Auto Const Mandatory
+{MCM: world toilets and urinals usable.}
 
 Float Property Radius = 1500.0 Auto Const
 Float Property TickSeconds = 3.0 Auto Const
@@ -38,6 +42,11 @@ ObjectReference[] _for
 ObjectReference[] _spawned
 Int _lastState = -1   ; -1 unknown, 0 AN76's bathroom off, 1 on
 Bool _bootstrapped = False
+ObjectReference[] _locked
+Int Property AN76_OUTHOUSE = 0x005D23 AutoReadOnly
+Int Property AN76_POSTWAR_TOILET = 0x005D22 AutoReadOnly
+Int Property AN76_HOBO_TOILET = 0x00A2A2 AutoReadOnly
+Int Property AN76_INSTITUTE_TOILET = 0x03FD70 AutoReadOnly
 
 Event OnQuestInit()
 	Begin()
@@ -119,7 +128,8 @@ Function Tick()
 	If !_bootstrapped
 		Bootstrap()
 	EndIf
-	If !BathroomOn()
+	LockAN76Toilets(Game.GetPlayer())
+	If !BathroomOn() || WorldToiletsOn.GetValueInt() == 0
 		If _lastState != 0
 			Debug.Trace("AN76 Toilets: AN76's Bathroom Needs are off (or AN76 is not installed) - nothing placed", 0)
 			_lastState = 0
@@ -156,6 +166,46 @@ Function Tick()
 	If _spawned.Length > before
 		Debug.Trace("AN76 Toilets: " + (_spawned.Length - before) + " placed (" + found.Length + " toilets and urinals in range, " + _spawned.Length + " live)", 0)
 	EndIf
+EndFunction
+
+; AN76's own toilets are placed as loose physics objects, so sitting down can shove one away (the
+; owner's camp toilet, 2026-09-29). Keyframed: collisions no longer move it, activation still works.
+Function LockAN76Toilets(Actor akPlayer)
+	If AN76ToiletList.GetSize() == 0
+		Int[] ids = new Int[4]
+		ids[0] = AN76_OUTHOUSE
+		ids[1] = AN76_POSTWAR_TOILET
+		ids[2] = AN76_HOBO_TOILET
+		ids[3] = AN76_INSTITUTE_TOILET
+		Int k = 0
+		While k < ids.Length
+			Form toilet = Game.GetFormFromFile(ids[k], "Flashy_PersonalEssentials.esp")
+			If toilet
+				AN76ToiletList.AddForm(toilet)
+			EndIf
+			k += 1
+		EndWhile
+		If AN76ToiletList.GetSize() == 0
+			Return
+		EndIf
+	EndIf
+	If _locked == None
+		_locked = new ObjectReference[0]
+	EndIf
+	ObjectReference[] found = akPlayer.FindAllReferencesOfType(AN76ToiletList as Form, Radius)
+	Int i = 0
+	While i < found.Length
+		ObjectReference toilet = found[i]
+		If toilet && _locked.Find(toilet) < 0
+			toilet.SetMotionType(toilet.Motion_Keyframed, True)
+			If _locked.Length >= 32
+				_locked.Remove(0, 1)
+			EndIf
+			_locked.Add(toilet, 1)
+			Debug.Trace("AN76 Toilets: locked AN76's " + toilet.GetBaseObject() + " in place", 0)
+		EndIf
+		i += 1
+	EndWhile
 EndFunction
 
 Bool Function Upright(ObjectReference akTarget)
