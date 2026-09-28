@@ -3,6 +3,11 @@ Scriptname AN76Toilets:Urinal extends ObjectReference
 own standing animation and sound, then AN76 clears the need (its QuickRemoveNeed). Only spawned for
 a male player. Everything of AN76's is looked up by form id at run time.}
 
+Sound Property ZipDown Auto Const Mandatory
+Sound Property ZipUp Auto Const Mandatory
+Sound Property Stream Auto Const Mandatory
+{Our own stream on porcelain, in place of AN76's toilet-water one.}
+
 Float Property StandOff = 42.0 Auto Const
 {Units in front of the urinal's wall plane (its model reaches 32 out, local -Y).}
 Float Property Seconds = 10.0 Auto Const
@@ -69,12 +74,17 @@ Function Pee(Actor akPlayer, Quest akBathroom)
 	EndIf
 	Int instance = 0
 	GlobalVariable sounds = AN76(AN76_PLAY_SOUNDS) as GlobalVariable
-	Sound peeing = AN76(AN76_PEEING) as Sound
-	If peeing && (!sounds || sounds.GetValueInt() == 1)
-		instance = peeing.Play(akPlayer)
+	Bool audible = !sounds || sounds.GetValueInt() == 1
+	If audible
+		ZipDown.Play(akPlayer)
+		Utility.Wait(0.8)
+		instance = Stream.Play(akPlayer)
 	EndIf
 
 	Utility.Wait(Seconds)
+	If audible
+		ZipUp.Play(akPlayer)
+	EndIf
 
 	If instance
 		Sound.StopInstance(instance)

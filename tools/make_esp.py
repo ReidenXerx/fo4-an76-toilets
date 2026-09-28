@@ -42,6 +42,22 @@ URINALS = [
     ('Stall02', 'StallUrinal02.nif', (-4, -45, 32, 4, -16, 104)),
     ('Stall03', 'StallUrinal03.nif', (-4, -44, 32, 4, -16, 104)),
 ]
+# Sound sets: property name -> clip folder(s) under Sound\FX\AN76Toilets (one clip is picked at random).
+SOUNDS = {
+    'Rumble': ['rumble'], 'StrainMale': ['strain_m'], 'StrainFemale': ['strain_f'],
+    'FartShort': ['fart_short'], 'FartLong': ['fart_long'], 'FartWet': ['fart_wet'],
+    'Plop': ['plop'], 'Explosive': ['explosive'], 'ReliefMale': ['relief_m'], 'ReliefFemale': ['relief_f'],
+    'Paper': ['paper'], 'ZipDown': ['zip/down'], 'ZipUp': ['zip/up'], 'Stream': ['urinal'],
+}
+SOUND_ROOT = pathlib.Path(__file__).resolve().parents[1] / 'sounds' / 'src'
+# Cloned from Fallout4.esm SNDR HC_UIModsComponentsWater / OBJArmorStealthActivate: standard sound
+# type, the object sound category, the player's 3D output model; BNAM = no pitch shift, 5% pitch
+# variance, priority 128, 1 dB volume variance, no static attenuation.
+SNDR_CNAM = bytes.fromhex('0a54ef1e')
+SNDR_GNAM = bytes.fromhex('a1720100')
+SNDR_ONAM = bytes.fromhex('f3be0a00')
+SNDR_BNAM = bytes.fromhex('000580010000')
+
 # vanilla base (Fallout4.esm) -> our spawn key
 TARGETS = [
     (0x02CD27, 'Seat_Broken01'), (0x034A3F, 'Seat_Broken01'),
@@ -122,11 +138,37 @@ def build():
         blob += field('SNAM', struct.pack('<4fIi', x, y, z, h, 0, -1))
         furn += record('FURN', fid, blob)
 
+    sndr = b''
+    for name, folders in SOUNDS.items():
+        fid = new_id('Sound_' + name)
+        blob = field('EDID', zstring('AN76T_Sound_' + name))
+        blob += field('CNAM', SNDR_CNAM)
+        blob += field('GNAM', SNDR_GNAM)
+        clips = []
+        for folder in folders:
+            src = SOUND_ROOT / folder
+            files = sorted(src.glob('*.mp3')) if src.is_dir() else [src.with_suffix('.mp3')]
+            for f in files:
+                rel = f.relative_to(SOUND_ROOT).with_suffix('.wav')
+                clips.append('Data\\Sound\\FX\\AN76Toilets\\' + str(rel).replace('/', '\\'))
+        if not clips:
+            raise SystemExit(f'no clips for sound {name}')
+        for c in clips:
+            blob += field('ANAM', zstring(c))
+        blob += field('ONAM', SNDR_ONAM)
+        blob += field('LNAM', struct.pack('<I', 0))
+        blob += field('BNAM', SNDR_BNAM)
+        sndr += record('SNDR', fid, blob)
+
     acti = b''
     for key, mesh, bounds in URINALS:
         fid = new_id('Urinal_' + key)
         blob = field('EDID', zstring('AN76T_Urinal_' + key))
-        blob += field('VMAD', vmad('AN76Toilets:Urinal', []))
+        blob += field('VMAD', vmad('AN76Toilets:Urinal', [
+            ('ZipDown', 1, obj(ids['Sound_ZipDown'])),
+            ('ZipUp', 1, obj(ids['Sound_ZipUp'])),
+            ('Stream', 1, obj(ids['Sound_Stream'])),
+        ]))
         blob += field('OBND', obnd(bounds))
         blob += field('FULL', zstring('Urinal'))
         blob += field('MODL', zstring('AN76Toilets\\' + mesh))
@@ -157,6 +199,16 @@ def build():
     quest += field('NEXT', b'')
     quest_rec = record('QUST', quest_id, quest)
 
+    sounds_quest_id = new_id('SoundsQuest')
+    sq = field('EDID', zstring('AN76T_Sounds'))
+    sq += field('VMAD', vmad('AN76Toilets:Sounds', [
+        (n, 1, obj(ids['Sound_' + n])) for n in
+        ('Rumble', 'StrainMale', 'StrainFemale', 'FartShort', 'FartLong', 'FartWet', 'Plop',
+         'Explosive', 'ReliefMale', 'ReliefFemale', 'Paper')]))
+    sq += field('DNAM', bytes.fromhex('110064670000000000000000'))
+    sq += field('NEXT', b'')
+    quest_rec += record('QUST', sounds_quest_id, sq)
+
     for fid in ids.values():
         if not 0x800 <= (fid & 0xFFFFFF) <= 0xFFF:
             raise SystemExit(f'{fid:08X} is outside 0x800-0xFFF, the range a light plugin holds')
@@ -165,7 +217,8 @@ def build():
     header += field('CNAM', zstring(AUTHOR))
     header += field('MAST', zstring(MASTER))
     header += field('DATA', struct.pack('<Q', 0))
-    body = (group('ACTI', acti) + group('FURN', furn) + group('FLST', flst_rec) + group('QUST', quest_rec))
+    body = (group('SNDR', sndr) + group('ACTI', acti) + group('FURN', furn) + group('FLST', flst_rec)
+            + group('QUST', quest_rec))
     return record('TES4', 0, header, flags=TES4_LIGHT) + body, ids
 
 
