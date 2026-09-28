@@ -54,7 +54,24 @@ EndEvent
 Event Actor.OnPlayerLoadGame(Actor akSender)
 	_going = False
 	Begin()
+	Status()
 EndEvent
+
+; One line on every load: what AN76 and HUDFramework look like from here.
+Function Status()
+	GlobalVariable stack = AN76(AN76_TOILET_STACK) as GlobalVariable
+	MagicEffect pain = AN76(AN76_PAIN) as MagicEffect
+	HUDFramework hud = HUD()
+	String need = "no AN76"
+	If stack
+		need = "need " + stack.GetValueInt()
+	EndIf
+	String icon = "no HUDFramework"
+	If hud
+		icon = "icon registered " + hud.IsWidgetRegistered(WidgetSWF) + ", loaded " + hud.IsWidgetLoaded(WidgetSWF)
+	EndIf
+	Debug.Trace("AN76 Toilets: loaded - " + need + ", pain " + (pain && Game.GetPlayer().HasMagicEffect(pain)) + ", " + icon + ", icon stage " + _stage, 0)
+EndFunction
 
 Function Begin()
 	RegisterForRemoteEvent(Game.GetPlayer(), "OnPlayerLoadGame")
@@ -101,6 +118,7 @@ Function ShowStage(Int aiStage)
 	If hud
 		hud.SendMessage(WidgetSWF, WIDGET_SET_STAGE, aiStage as Float, 0.0, 0.0, 0.0, 0.0, 0.0)
 	EndIf
+	Debug.Trace("AN76 Toilets: icon stage " + _stage + " -> " + aiStage, 0)
 	_stage = aiStage
 EndFunction
 

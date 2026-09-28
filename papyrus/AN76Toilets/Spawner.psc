@@ -38,6 +38,7 @@ Event OnQuestInit()
 EndEvent
 
 Event Actor.OnPlayerLoadGame(Actor akSender)
+	_lastState = -1   ; say the bathroom state again on every load
 	Begin()
 EndEvent
 
