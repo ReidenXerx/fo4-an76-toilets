@@ -12,6 +12,9 @@ for tag, prefix in ((b'ANAM', ''), (b'MODL', 'Meshes/')):
     i = b.find(tag)
     while i >= 0:
         end = b.find(b'\x00', i + 6)
+        if tag == b'ANAM' and not b[i + 6:i + 10] == b'Data':
+            i = b.find(tag, i + 4)   # a package parameter type or a quest's alias count, not a sound
+            continue
         path = b[i + 6:end].decode('ascii')
         rel = path.replace('\\', '/')
         if rel.lower().startswith('data/'):

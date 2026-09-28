@@ -49,6 +49,8 @@ SOUNDS = {
     'FartShort': ['fart_short'], 'FartLong': ['fart_long'], 'FartWet': ['fart_wet'],
     'Plop': ['plop'], 'Explosive': ['explosive'], 'ReliefMale': ['relief_m'], 'ReliefFemale': ['relief_f'],
     'Paper': ['paper'], 'ZipDown': ['zip/down'], 'ZipUp': ['zip/up'], 'Stream': ['urinal'],
+    'ScreamMale': ['scream_m'], 'ScreamFemale': ['scream_f'], 'GagMale': ['gag_m'], 'GagFemale': ['gag_f'],
+    'AccidentPoop': ['accident/accident_1'], 'AccidentPee': ['accident/accident_2'], 'Flies': ['flies'],
 }
 SOUND_ROOT = pathlib.Path(__file__).resolve().parents[1] / 'sounds' / 'src'
 # Cloned from Fallout4.esm SNDR HC_UIModsComponentsWater / OBJArmorStealthActivate: standard sound
@@ -65,6 +67,27 @@ SETTINGS = [
     ('IconOn', 1.0), ('IconX', 1120.0), ('IconY', 560.0), ('IconScale', 1.0),
     ('SoundsOn', 1.0), ('WorldToilets', 1.0),
     ('IconNudgeX', 0.0), ('IconNudgeY', 0.0),
+    ('AccidentsOn', 1.0), ('OrangeHours', 2.0), ('AccidentHours', 4.0),
+    ('PanicOn', 1.0), ('PanicSeconds', 60.0), ('AftermathOn', 1.0),
+]
+
+# The panic package: Fallout4.esm PACK DN136_Flee (001D4388) field for field -- built on the FleeFrom
+# template (00039A34), target the player (0x14), no conditions -- with an any-time schedule (FleeFrom's
+# PSDT) and a longer run: 3000 units, about 43 m, instead of 1000.
+PANIC_PACK = [
+    ('PKDT', '0020000012000200fffe0000'), ('PSDT', 'ffff00ffff00000000000000'),
+    ('PKCU', '08000000349a030001000000'),
+    ('ANAM', '53696e676c6552656600'), ('PTDA', '000000001400000000000000'),
+    ('ANAM', '466c6f617400'), ('CNAM', '00803b45'),
+    ('ANAM', '466c6f617400'), ('CNAM', '00004843'),
+    ('ANAM', '426f6f6c00'), ('CNAM', '00'), ('ANAM', '426f6f6c00'), ('CNAM', '01'),
+    ('ANAM', '426f6f6c00'), ('CNAM', '01'), ('ANAM', '426f6f6c00'), ('CNAM', '01'),
+    ('ANAM', '426f6f6c00'), ('CNAM', '01'),
+    ('UNAM', '0e'), ('UNAM', '0a'), ('UNAM', '03'), ('UNAM', '07'), ('UNAM', '08'), ('UNAM', '0b'),
+    ('UNAM', '0c'), ('UNAM', '0d'), ('XNAM', '0f'),
+    ('POBA', ''), ('INAM', '00000000'), ('PDTO', '0000000000000000'),
+    ('POEA', ''), ('INAM', '00000000'), ('PDTO', '0000000000000000'),
+    ('POCA', ''), ('INAM', '00000000'), ('PDTO', '0000000000000000'),
 ]
 
 # vanilla base (Fallout4.esm) -> our spawn key
@@ -229,6 +252,8 @@ def build():
     quest += field('NEXT', b'')
     quest_rec = record('QUST', quest_id, quest)
 
+    pack_id = new_id('PanicFlee')
+    accident_id = new_id('AccidentQuest')
     sounds_quest_id = new_id('SoundsQuest')
     sq = field('EDID', zstring('AN76T_Sounds'))
     sq += field('VMAD', vmad('AN76Toilets:Sounds', [
@@ -238,10 +263,40 @@ def build():
         ('IconOn', 1, obj(ids['Setting_IconOn'])), ('IconX', 1, obj(ids['Setting_IconX'])),
         ('IconNudgeX', 1, obj(ids['Setting_IconNudgeX'])), ('IconNudgeY', 1, obj(ids['Setting_IconNudgeY'])),
         ('IconY', 1, obj(ids['Setting_IconY'])), ('IconScale', 1, obj(ids['Setting_IconScale'])),
-        ('SoundsSetting', 1, obj(ids['Setting_SoundsOn']))]))
+        ('SoundsSetting', 1, obj(ids['Setting_SoundsOn'])),
+        ('Accident', 1, obj(accident_id)),
+        ('AccidentsOn', 1, obj(ids['Setting_AccidentsOn'])),
+        ('OrangeHours', 1, obj(ids['Setting_OrangeHours'])),
+        ('AccidentHours', 1, obj(ids['Setting_AccidentHours']))]))
     sq += field('DNAM', bytes.fromhex('110064670000000000000000'))
     sq += field('NEXT', b'')
     quest_rec += record('QUST', sounds_quest_id, sq)
+
+    pack = field('EDID', zstring('AN76T_PanicFlee'))
+    for sig, hexdata in PANIC_PACK:
+        pack += field(sig, bytes.fromhex(hexdata))
+    pack_rec = record('PACK', pack_id, pack)
+
+    aq = field('EDID', zstring('AN76T_Accident'))
+    aq += field('VMAD', vmad('AN76Toilets:Accident', [
+        ('Panicked', 1, struct.pack('<HhI', 0, 0, accident_id))] + [
+        (n, 1, obj(ids['Sound_' + n])) for n in
+        ('AccidentPoop', 'AccidentPee', 'ScreamMale', 'ScreamFemale', 'GagMale', 'GagFemale', 'Flies')] + [
+        (n, 1, obj(ids['Setting_' + n])) for n in ('PanicOn', 'PanicSeconds', 'AftermathOn')]))
+    aq += field('DNAM', bytes.fromhex('110064670000000000000000'))
+    aq += field('NEXT', b'')
+    # One reference collection, alias 0 "Panicked": empty until the script adds people; optional, may
+    # hold reserved references; its package makes them run from the player.
+    aq += field('ANAM', struct.pack('<I', 1))
+    aq += field('ALCS', struct.pack('<I', 0))
+    aq += field('ALMI', b'\x00')
+    aq += field('ALST', struct.pack('<I', 0))
+    aq += field('ALID', zstring('Panicked'))
+    aq += field('FNAM', struct.pack('<I', 0x202))
+    aq += field('ALPC', struct.pack('<I', pack_id))
+    aq += field('VTCK', struct.pack('<I', 0))
+    aq += field('ALED', b'')
+    quest_rec += record('QUST', accident_id, aq)
 
     for fid in ids.values():
         if not 0x800 <= (fid & 0xFFFFFF) <= 0xFFF:
@@ -252,7 +307,7 @@ def build():
     header += field('MAST', zstring(MASTER))
     header += field('DATA', struct.pack('<Q', 0))
     body = (group('GLOB', glob) + group('SNDR', sndr) + group('ACTI', acti) + group('FURN', furn)
-            + group('FLST', flst_rec + an76_list) + group('QUST', quest_rec))
+            + group('FLST', flst_rec + an76_list) + group('PACK', pack_rec) + group('QUST', quest_rec))
     return record('TES4', 0, header, flags=TES4_LIGHT) + body, ids
 
 

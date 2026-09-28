@@ -35,6 +35,14 @@ Int Property WIDGET_SET_NUDGE = 2 AutoReadOnly
 GlobalVariable Property SoundsSetting Auto Const Mandatory
 {MCM: the comedy sounds on or off.}
 
+AN76Toilets:Accident Property Accident Auto Const Mandatory
+{The accident, the aftermath and the panic.}
+GlobalVariable Property AccidentsOn Auto Const Mandatory
+{MCM: holding it never hurts but ends in an accident (on), or AN76's own pain and damage (off).}
+GlobalVariable Property OrangeHours Auto Const Mandatory
+GlobalVariable Property AccidentHours Auto Const Mandatory
+{MCM: game hours of holding it, sleep left out.}
+
 Float Property WatchSeconds = 3.0 Auto Const
 {How often to look while nothing is happening.}
 Float Property BusySeconds = 0.5 Auto Const
@@ -49,6 +57,8 @@ Int Property AN76_PLAY_SOUNDS = 0x03FD6A AutoReadOnly      ; GlobalVariable Flas
 Int Property AN76_SILENT = 0x023D43 AutoReadOnly           ; GlobalVariable Flashy_NeedsHygieneSilentPoop
 Int Property AN76_FOOD_ILL = 0x001F34 AutoReadOnly         ; MagicEffect Flashy_ME_FoodPoisonIllness
 Int Property AN76_RAD_ILL = 0x001F32 AutoReadOnly          ; MagicEffect Flashy_ME_RadPoisonIllness
+Int Property AN76_PAIN_POTION = 0x03B906 AutoReadOnly      ; Potion Flashy_Hygiene_BathroomPain
+Int Property AN76_PAIN_REMOVER = 0x03B907 AutoReadOnly     ; Potion Flashy_Hygiene_BathroomPainRemover
 
 Bool _hadPain = False
 Int _lastStack = -1
@@ -64,6 +74,11 @@ Bool _going = False
 Float _goingSince = 0.0
 Bool _pooping = False
 Int _step = 0
+Bool _urgent = False        ; AN76's need has hit (its pain fired) and has not been relieved
+Bool _painTaken = False     ; we took AN76's pain away (accidents on)
+Float _heldHours = 0.0      ; game hours held, sleep left out
+Float _lastTick = 0.0       ; game days
+Bool _sleeping = False
 
 Event OnQuestInit()
 	Begin()
@@ -91,11 +106,12 @@ Function Status()
 	If hud
 		icon = "icon registered " + hud.IsWidgetRegistered(WidgetSWF) + ", loaded " + hud.IsWidgetLoaded(WidgetSWF)
 	EndIf
-	Debug.Trace("AN76 Toilets: loaded - " + need + ", pain " + (pain && Game.GetPlayer().HasMagicEffect(pain)) + ", " + icon + ", icon stage " + _stage + ", " + Cooldown(), 0)
+	Debug.Trace("AN76 Toilets: loaded - " + need + ", pain " + (pain && Game.GetPlayer().HasMagicEffect(pain)) + ", holding " + _urgent + " (" + _heldHours + " game hours), " + icon + ", icon stage " + _stage + ", " + Cooldown(), 0)
 EndFunction
 
 Function Begin()
 	RegisterForRemoteEvent(Game.GetPlayer(), "OnPlayerLoadGame")
+	RegisterForPlayerSleep()
 	SetupWidget()
 	StartTimer(WatchSeconds, WATCH_TIMER)
 EndFunction
@@ -176,6 +192,16 @@ Function ShowStage(Int aiStage)
 EndFunction
 
 Int Function Urgency(Bool abPain)
+	If AccidentsOn.GetValueInt() == 1
+		If !_urgent
+			Return 0
+		ElseIf _heldHours < OrangeHours.GetValue()
+			Return 1
+		ElseIf _heldHours < AccidentHours.GetValue()
+			Return 2
+		EndIf
+		Return 3
+	EndIf
 	If !abPain
 		Return 0
 	EndIf
@@ -230,6 +256,7 @@ Event OnTimer(Int aiTimerID)
 		Return
 	EndIf
 
+	GlobalVariable stack = AN76(AN76_TOILET_STACK) as GlobalVariable
 	Bool hasPain = pain && player.HasMagicEffect(pain)
 	If hasPain && !_hadPain
 		Debug.Trace("AN76 Toilets: AN76's bathroom pain started - you need to go", 0)
@@ -237,12 +264,40 @@ Event OnTimer(Int aiTimerID)
 		If SoundsOn()
 			Rumble.Play(player)
 		EndIf
+		If !_urgent
+			_urgent = True
+			_heldHours = 0.0
+			_lastTick = Utility.GetCurrentGameTime()
+		EndIf
 	EndIf
 	_hadPain = hasPain
+	If _urgent && (!stack || stack.GetValueInt() == 0)
+		Debug.Trace("AN76 Toilets: relieved after holding it " + _heldHours + " game hours", 0)
+		_urgent = False
+		_painTaken = False
+		_heldHours = 0.0
+	EndIf
+	If _urgent
+		Hold()
+		If AccidentsOn.GetValueInt() == 1
+			If hasPain
+				TakePainAway(player)
+			EndIf
+		ElseIf _painTaken && !hasPain
+			GivePainBack(player)
+		EndIf
+	EndIf
 	ApplyLayout()
-	ShowStage(Urgency(hasPain))
 
 	Bool isGoing = player.HasKeyword(busy)
+	Int stage = Urgency(hasPain)
+	If stage >= 3 && AccidentsOn.GetValueInt() == 1 && !isGoing && !_going && !player.IsInScene()
+		ShowStage(3)
+		HadAccident(player)
+		stage = 0
+	EndIf
+	ShowStage(stage)
+
 	If isGoing && !_going
 		Debug.Trace("AN76 Toilets: going (sounds " + SoundsOn() + ", sick " + Sick(player) + ")", 0)
 		_going = True
@@ -260,7 +315,6 @@ Event OnTimer(Int aiTimerID)
 		EndIf
 	EndIf
 
-	GlobalVariable stack = AN76(AN76_TOILET_STACK) as GlobalVariable
 	If stack && stack.GetValueInt() != _lastStack
 		If stack.GetValueInt() == 1
 			Debug.Trace("AN76 Toilets: AN76 took a meal - need pending, its 1-3 game hour timer is running", 0)
@@ -275,6 +329,64 @@ Event OnTimer(Int aiTimerID)
 		StartTimer(WatchSeconds, WATCH_TIMER)
 	EndIf
 EndEvent
+
+; ---- holding it ----------------------------------------------------------------------------
+
+; Game hours the player has been holding it, sleep left out: the clock stops at bedtime and runs again
+; on waking (owner, 2026-09-29: a 12-hour sleep must not end in an accident). Waiting and fast travel count.
+Function Hold()
+	Float now = Utility.GetCurrentGameTime()
+	If !_sleeping && _lastTick > 0.0 && now > _lastTick
+		_heldHours += (now - _lastTick) * 24.0
+	EndIf
+	_lastTick = now
+EndFunction
+
+Event OnPlayerSleepStart(Float afSleepStartTime, Float afDesiredSleepEndTime, ObjectReference akBed)
+	If _urgent
+		Hold()
+		Debug.Trace("AN76 Toilets: asleep - the hold clock stops at " + _heldHours + " game hours", 0)
+	EndIf
+	_sleeping = True
+EndEvent
+
+Event OnPlayerSleepStop(Bool abInterrupted, ObjectReference akBed)
+	_sleeping = False
+	_lastTick = Utility.GetCurrentGameTime()
+	If _urgent
+		Debug.Trace("AN76 Toilets: awake - the hold clock runs again from " + _heldHours + " game hours", 0)
+	EndIf
+EndEvent
+
+; AN76's pain is a spell that hurts every interval. With accidents on, holding it never hurts, it only gets
+; more urgent; the need itself stays, so AN76 still wants a toilet and its message still shows.
+Function TakePainAway(Actor akPlayer)
+	Potion remover = AN76(AN76_PAIN_REMOVER) as Potion
+	If remover
+		akPlayer.EquipItem(remover, False, True)
+		_painTaken = True
+		Debug.Trace("AN76 Toilets: AN76's pain taken away - holding it (" + _heldHours + " of " + AccidentHours.GetValue() + " game hours)", 0)
+	EndIf
+EndFunction
+
+; Accidents switched off while holding it: AN76's pain comes back, as if it had never been taken.
+Function GivePainBack(Actor akPlayer)
+	Potion painPotion = AN76(AN76_PAIN_POTION) as Potion
+	If painPotion
+		akPlayer.EquipItem(painPotion, False, True)
+		Debug.Trace("AN76 Toilets: accidents off - AN76's pain is back", 0)
+	EndIf
+	_painTaken = False
+EndFunction
+
+Function HadAccident(Actor akPlayer)
+	Bool poop = Sick(akPlayer) || Utility.RandomInt(0, 1) == 0
+	Debug.Trace("AN76 Toilets: held it " + _heldHours + " game hours, the limit is " + AccidentHours.GetValue() + " - accident", 0)
+	_urgent = False
+	_painTaken = False
+	_heldHours = 0.0
+	Accident.Trigger(poop, SoundsOn())
+EndFunction
 
 ; AN76 ignores anything eaten before NextPiss (game days): 6 game hours after the last visit, or
 ; after its Bathroom Needs started.

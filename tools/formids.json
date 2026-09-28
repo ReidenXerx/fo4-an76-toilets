@@ -34,5 +34,20 @@
  "Setting_WorldToilets": "820",
  "AN76Toilets": "821",
  "Setting_IconNudgeX": "822",
- "Setting_IconNudgeY": "823"
+ "Setting_IconNudgeY": "823",
+ "Sound_ScreamMale": "824",
+ "Sound_ScreamFemale": "825",
+ "Sound_GagMale": "826",
+ "Sound_GagFemale": "827",
+ "Sound_AccidentPoop": "828",
+ "Sound_AccidentPee": "829",
+ "Sound_Flies": "82A",
+ "Setting_AccidentsOn": "82B",
+ "Setting_OrangeHours": "82C",
+ "Setting_AccidentHours": "82D",
+ "Setting_PanicOn": "82E",
+ "Setting_PanicSeconds": "82F",
+ "Setting_AftermathOn": "830",
+ "PanicFlee": "831",
+ "AccidentQuest": "832"
 }

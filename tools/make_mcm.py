@@ -58,6 +58,21 @@ def build():
                'Only for a HUD with no status icons row: left to right on the 1280 x 720 HUD.'),
         slider('Fallback position Y', 'Setting_IconY', 0.0, 720.0, 10.0,
                'Only for a HUD with no status icons row: top to bottom on the 1280 x 720 HUD.'),
+        {'text': 'Holding it', 'type': 'section'},
+        switcher('Accidents instead of pain', 'Setting_AccidentsOn',
+                 "Holding it never hurts: the icon turns orange, and when it would turn red you go in your "
+                 "pants, right where you stand. Off: AN76's own pain and damage."),
+        slider('Orange after (game hours)', 'Setting_OrangeHours', 0.5, 12.0, 0.5,
+               'Game hours since the need hit. Sleep does not count. Default 2.'),
+        slider('Accident after (game hours)', 'Setting_AccidentHours', 1.0, 24.0, 0.5,
+               'Game hours since the need hit. Sleep does not count. Default 4.'),
+        switcher('Panic', 'Setting_PanicOn',
+                 'Everyone within 25 m screams and runs from you, then goes back to what they were doing. '
+                 'Not your companion, and nobody fighting, hostile, in a scene or talking to you.'),
+        slider('Panic length (seconds)', 'Setting_PanicSeconds', 10.0, 180.0, 5.0, 'Default 60.'),
+        switcher('Aftermath', 'Setting_AftermathOn',
+                 "You stink: AN76's body odour until you bathe or swim (with AN76's bathing on; otherwise "
+                 "6 game hours). Gnats where it happened, flies buzzing, and people near you gag and pull a face."),
         {'text': 'Sounds', 'type': 'section'},
         switcher('Bathroom sounds', 'Setting_SoundsOn',
                  'The stomach rumble when the need hits; straining, farts, plops and a sigh of relief '
