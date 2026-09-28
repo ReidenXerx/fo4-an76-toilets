@@ -10,6 +10,7 @@ Record layouts are cloned from vanilla: the seat from Fallout4.esm FURN 10C853
 NpcChairInstituteToiletSit01, the urinal from ACTI 0248C2 Toilet01, the quest DNAM from
 AAF_MainQuest (start game enabled).
 """
+import json
 import pathlib
 import struct
 import sys
@@ -120,12 +121,20 @@ def obnd(b):
 
 
 def build():
-    ids, nxt = {}, FIRST_ID
+    # Form ids are PERMANENT: a save binds running scripts and placed references to them, so a record
+    # that moves takes a save's script instances with it onto whatever now holds its old id (2026-09-29:
+    # the spawner ran attached to an MCM global). tools/formids.json is the only source; a new record
+    # appends after the highest id, an existing one never moves.
+    table_path = pathlib.Path(__file__).resolve().parent / 'formids.json'
+    table = json.loads(table_path.read_text())
+    ids = {}
 
     def new_id(key):
-        nonlocal nxt
-        ids[key] = nxt
-        nxt += 1
+        if key not in table:
+            table[key] = f'{max(int(v, 16) for v in table.values()) + 1:03X}'
+            table_path.write_text(json.dumps(table, indent=1) + '\n')
+            print(f'new form id {table[key]} for {key} (commit tools/formids.json)')
+        ids[key] = FIRST_ID & 0xFF000000 | int(table[key], 16)
         return ids[key]
 
     furn = b''
@@ -236,7 +245,7 @@ def build():
         if not 0x800 <= (fid & 0xFFFFFF) <= 0xFFF:
             raise SystemExit(f'{fid:08X} is outside 0x800-0xFFF, the range a light plugin holds')
 
-    header = field('HEDR', struct.pack('<fiI', 1.0, len(ids), nxt))
+    header = field('HEDR', struct.pack('<fiI', 1.0, len(ids), max(ids.values()) + 1))
     header += field('CNAM', zstring(AUTHOR))
     header += field('MAST', zstring(MASTER))
     header += field('DATA', struct.pack('<Q', 0))

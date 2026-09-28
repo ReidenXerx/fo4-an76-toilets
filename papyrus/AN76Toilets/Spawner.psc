@@ -53,6 +53,9 @@ Event OnQuestInit()
 EndEvent
 
 Event Actor.OnPlayerLoadGame(Actor akSender)
+	If !OnOwnRecord()
+		Return
+	EndIf
 	_lastState = -1   ; say the bathroom state again on every load
 	Begin()
 EndEvent
@@ -66,7 +69,22 @@ Function Begin()
 	StartTimer(TickSeconds, TICK_TIMER)
 EndFunction
 
+; Only ever run on our own quest. A save made while a build had renumbered the plugin can hold an
+; instance of this script on some other record (2026-09-29: on an MCM global); such an instance says so
+; once and stops for good instead of running with its properties empty.
+Bool Function OnOwnRecord()
+	If Game.GetFormFromFile(0x000819, "AN76_Toilets.esp") == Self as Form
+		Return True
+	EndIf
+	Debug.Trace("AN76 Toilets: a stray spawner instance on " + Self + " - stopped", 0)
+	UnregisterForAllEvents()
+	Return False
+EndFunction
+
 Event OnTimer(Int aiTimerID)
+	If !OnOwnRecord()
+		Return
+	EndIf
 	If aiTimerID == TICK_TIMER
 		Tick()
 		StartTimer(TickSeconds, TICK_TIMER)

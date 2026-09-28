@@ -63,6 +63,9 @@ Event OnQuestInit()
 EndEvent
 
 Event Actor.OnPlayerLoadGame(Actor akSender)
+	If !OnOwnRecord()
+		Return
+	EndIf
 	_going = False
 	Begin()
 	Status()
@@ -186,7 +189,22 @@ Bool Function SoundsOn()
 	Return SoundsSetting.GetValueInt() == 1 && (!sounds || sounds.GetValueInt() == 1) && (!silent || silent.GetValueInt() == 0)
 EndFunction
 
+; Only ever run on our own quest. A save made while a build had renumbered the plugin can hold an
+; instance of this script on some other record (2026-09-29: on an MCM global); such an instance says so
+; once and stops for good instead of running with its properties empty.
+Bool Function OnOwnRecord()
+	If Game.GetFormFromFile(0x00081A, "AN76_Toilets.esp") == Self as Form
+		Return True
+	EndIf
+	Debug.Trace("AN76 Toilets: a stray sounds instance on " + Self + " - stopped", 0)
+	UnregisterForAllEvents()
+	Return False
+EndFunction
+
 Event OnTimer(Int aiTimerID)
+	If !OnOwnRecord()
+		Return
+	EndIf
 	If aiTimerID != WATCH_TIMER
 		Return
 	EndIf
