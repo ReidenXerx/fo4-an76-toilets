@@ -90,5 +90,7 @@
  "Sound_Squelch": "858",
  "PanicFleeCrowd": "859",
  "PanicLink": "85A",
- "PanicRun": "85B"
+ "PanicRun": "85B",
+ "PanicFearEffect": "85C",
+ "PanicFear": "85D"
 }
