@@ -24,6 +24,11 @@ Int Property AN76_BUSY = 0x03B904 AutoReadOnly             ; Keyword Flashy_Keyw
 Int Property LOOSE_IDLE_STOP = 0x029380 AutoReadOnly       ; Fallout4.esm Idle LooseIdleStop
 
 Bool _busy = False
+Bool _hit = False
+
+Event OnHit(ObjectReference akTarget, ObjectReference akAggressor, Form akSource, Projectile akProjectile, Bool abPowerAttack, Bool abSneakAttack, Bool abBashAttack, Bool abHitBlocked, String asMaterialName)
+	_hit = True
+EndEvent
 
 Form Function AN76(Int aiFormID)
 	Return Game.GetFormFromFile(aiFormID, "Flashy_PersonalEssentials.esp")
@@ -85,7 +90,15 @@ Function Pee(Actor akPlayer, Quest akBathroom)
 		instance = Stream.Play(akPlayer)
 	EndIf
 
-	Utility.Wait(Seconds)
+	; A hit ends it at once, as it does at AN76's own toilets -- and then the need stays.
+	_hit = False
+	RegisterForHitEvent(akPlayer)
+	Float waited = 0.0
+	While waited < Seconds && !_hit
+		Utility.Wait(0.5)
+		waited += 0.5
+	EndWhile
+	UnregisterForHitEvent(akPlayer)
 	If audible
 		ZipUp.Play(akPlayer)
 	EndIf
@@ -100,6 +113,10 @@ Function Pee(Actor akPlayer, Quest akBathroom)
 	layer.Delete()
 	If busy
 		akPlayer.RemoveKeyword(busy)
+	EndIf
+	If _hit
+		Debug.Trace("AN76 Toilets: urinal - hit, stopped after " + waited + " s", 0)
+		Return
 	EndIf
 	; AN76's own ending: the need cleared, the pain gone, its "done" message, the next-need clock.
 	ScriptObject script = akBathroom.CastAs("FlashyEssentials:Flashy_BathroomScript")

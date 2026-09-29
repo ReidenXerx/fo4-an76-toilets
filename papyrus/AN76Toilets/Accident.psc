@@ -183,6 +183,7 @@ Function Trigger(Bool abPoop, Bool abSounds)
 	EndIf
 	Face(player, FACE_DISGUST)
 	StartTimer(8.0, FACE_TIMER)
+	_talker = None
 EndFunction
 
 ; AN76's QuickRemoveNeed: the need, its timers, the "busy" keyword and the 6-hour cooldown, all its own.
@@ -257,14 +258,19 @@ Bool Function WillPanic(Actor akActor, Actor akPlayer)
 	If akActor.IsUnconscious() || akActor.IsBleedingOut() || akActor.IsInCombat() || akActor.IsHostileToActor(akPlayer)
 		Return False
 	EndIf
+	; Asleep, sitting or lying on furniture, or in power armor: a cower from there freezes or T-poses them.
+	; No 3D: nobody there to see it.
+	If !akActor.Is3DLoaded() || akActor.GetSleepState() != 0 || akActor.GetSitState() != 0 || akActor.IsInPowerArmor()
+		Return False
+	EndIf
 	If akActor.IsPlayerTeammate() || akActor.IsInFaction(Vanilla(COMPANION_FACTION) as Faction)
 		Return False
 	EndIf
 	If Panicked.Find(akActor) >= 0
 		Return False
 	EndIf
-	; The one the player was talking to: that conversation is over now.
-	If akActor != _talker && (akActor.IsInScene() || akActor.IsInDialogueWithPlayer())
+	; The one the player was talking to: that conversation is over now. A scene still keeps anyone.
+	If akActor.IsInScene() || (akActor != _talker && akActor.IsInDialogueWithPlayer())
 		Return False
 	EndIf
 	Return True
@@ -356,15 +362,16 @@ EndFunction
 Function Stink()
 	Actor player = Game.GetPlayer()
 	_stinkTick += 1
-	If _gagger && _stinkTick % GagTicks == 2
-		Face(_gagger, 0)
-		_gagger = None
+	If _stinkTick % GagTicks == 2
+		UnGag()
 	EndIf
 	If !_soiled
+		UnGag()
 		Return
 	EndIf
 	If !StillSoiled(player)
 		_soiled = False
+		UnGag()
 		Debug.Notification("You're clean again.")
 		Debug.Trace("AN76 Toilets: clean again", 0)
 		Return
@@ -403,6 +410,14 @@ Function Stink()
 	StartTimer(StinkSeconds, STINK_TIMER)
 EndFunction
 
+; The last one who gagged gets their face back.
+Function UnGag()
+	If _gagger
+		Face(_gagger, 0)
+		_gagger = None
+	EndIf
+EndFunction
+
 ; Throws up: the disgust face, the heave (bent over, unless they are cowering), the sound.
 Function Puke(Actor akActor, Bool abBendOver)
 	Face(akActor, FACE_DISGUST)
@@ -429,7 +444,7 @@ Actor Function SomeoneNear(Actor akPlayer)
 	Int i = 0
 	While i < refs.Length
 		Actor a = refs[(start + i) % refs.Length] as Actor
-		If a && a != akPlayer && !a.IsDead() && !a.IsDisabled() && !a.IsInCombat() && !a.IsHostileToActor(akPlayer) && !a.IsInScene() && Panicked.Find(a) < 0
+		If a && a != akPlayer && a.Is3DLoaded() && !a.IsDead() && !a.IsDisabled() && !a.IsUnconscious() && !a.IsBleedingOut() && a.GetSleepState() == 0 && !a.IsInCombat() && !a.IsHostileToActor(akPlayer) && !a.IsInScene() && Panicked.Find(a) < 0
 			Return a
 		EndIf
 		i += 1
@@ -453,6 +468,20 @@ Event OnTimer(Int aiTimerID)
 		If !_panicLogged
 			_panicLogged = True
 			LogPanic()
+		EndIf
+		; Shot at or killed mid-panic: let go of them so the fight (or the body) is the game's again.
+		Int i = Panicked.GetCount() - 1
+		While i >= 0
+			Actor p = Panicked.GetAt(i) as Actor
+			If p && (p.IsDead() || p.IsInCombat())
+				Panicked.RemoveRef(p)
+				Face(p, 0)
+				p.EvaluatePackage(False)
+			EndIf
+			i -= 1
+		EndWhile
+		If Panicked.GetCount() == 0
+			Return
 		EndIf
 		; Someone screams again, now and then.
 		If Utility.RandomInt(0, 1) == 0
@@ -534,6 +563,7 @@ Function DebugClean()
 	_soiledUntil = 0.0
 	_odour = False
 	_soiled = False
+	UnGag()
 	Debug.Notification("AN76 Toilets debug: clean.")
 EndFunction
 

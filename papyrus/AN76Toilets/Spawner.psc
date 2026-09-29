@@ -253,6 +253,14 @@ Function Prune(Actor akPlayer)
 		If keep && spawned.GetDistance(akPlayer) > Radius * 2.0
 			keep = False
 		EndIf
+		; And never trust a distance across an interior's walls: a different cell where either is inside.
+		If keep
+			Cell here = akPlayer.GetParentCell()
+			Cell there = spawned.GetParentCell()
+			If there != here && (!here || !there || here.IsInterior() || there.IsInterior())
+				keep = False
+			EndIf
+		EndIf
 		If !keep
 			If spawned
 				spawned.Disable(False)

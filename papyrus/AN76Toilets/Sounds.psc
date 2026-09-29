@@ -94,6 +94,14 @@ Event Actor.OnPlayerLoadGame(Actor akSender)
 		Return
 	EndIf
 	_going = False
+	; Real time starts over with the game and a sleep a save caught never sends its Stop: nothing saved
+	; from those may carry over.
+	_sleeping = False
+	_lastTick = Utility.GetCurrentGameTime()
+	_redressCheckAt = 0.0
+	If _hadPain
+		_painSince = Utility.GetCurrentRealTime()
+	EndIf
 	Begin()
 	Status()
 EndEvent
@@ -257,7 +265,11 @@ Event OnTimer(Int aiTimerID)
 	Keyword busy = AN76(AN76_BUSY) as Keyword
 	MagicEffect pain = AN76(AN76_PAIN) as MagicEffect
 	If !busy
-		StartTimer(WatchSeconds * 10.0, WATCH_TIMER)   ; AN76 not installed: look rarely
+		; AN76 not installed (or removed from this save): nothing to show, look rarely.
+		ShowStage(0)
+		_urgent = False
+		_going = False
+		StartTimer(WatchSeconds * 10.0, WATCH_TIMER)
 		Return
 	EndIf
 
@@ -310,16 +322,23 @@ Event OnTimer(Int aiTimerID)
 
 	Bool isGoing = player.HasKeyword(busy)
 	Int stage = Urgency(hasPain)
-	; A quest scene holds it back (the player is not free); a conversation does not -- the accident ends it.
-	If stage >= 3 && AccidentsOn.GetValueInt() == 1 && !isGoing && !_going && (!player.IsInScene() || player.GetDialogueTarget())
+	; A quest scene holds it back (the player is not free), and so does a conversation that is part of one:
+	; closing it could leave the scene waiting for a line. A free conversation does not -- the accident ends it.
+	Actor talker = player.GetDialogueTarget()
+	If stage >= 3 && AccidentsOn.GetValueInt() == 1 && !isGoing && !_going && (!player.IsInScene() || (talker && !talker.IsInScene()))
 		ShowStage(3)
 		HadAccident(player)
 		stage = 0
 	EndIf
 	ShowStage(stage)
 
-	If !isGoing && !_going && stack && stack.GetValueInt() == 1
-		_worn = WornNow(player)
+	; Not while a put-back is pending (an interrupted going leaves the need on and the player bare), and not
+	; if AN76 started stripping while it was being taken.
+	If !isGoing && !_going && _redressCheckAt <= 0.0 && stack && stack.GetValueInt() == 1
+		Form[] worn = WornNow(player)
+		If !player.HasKeyword(busy)
+			_worn = worn
+		EndIf
 	EndIf
 	If _redressCheckAt > 0.0 && Utility.GetCurrentRealTime() >= _redressCheckAt
 		_redressCheckAt = 0.0
@@ -349,6 +368,10 @@ Event OnTimer(Int aiTimerID)
 			Debug.Trace("AN76 Toilets: AN76 took a meal - need pending, its 1-3 game hour timer is running", 0)
 		ElseIf _lastStack == 1
 			Debug.Trace("AN76 Toilets: AN76's need cleared (" + Cooldown() + ")", 0)
+			; Cleared without a going (an accident): what was worn then says nothing about a later visit.
+			If !isGoing && !_going && _redressCheckAt <= 0.0
+				_worn = None
+			EndIf
 		EndIf
 		_lastStack = stack.GetValueInt()
 	EndIf
@@ -396,6 +419,8 @@ Function PutBackClothes(Actor akPlayer)
 	If putBack > 0
 		Debug.Trace("AN76 Toilets: AN76 left " + putBack + " of " + _worn.Length + " worn items off - put them back on", 0)
 	EndIf
+	; Used once: a later visit with no need pending must not dress the player in what they wore today.
+	_worn = None
 EndFunction
 
 ; ---- holding it ----------------------------------------------------------------------------
