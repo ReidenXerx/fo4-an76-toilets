@@ -88,5 +88,7 @@
  "Topic_ReliefFemale2": "856",
  "Line_ReliefFemale2": "857",
  "Sound_Squelch": "858",
- "PanicFleeCrowd": "859"
+ "PanicFleeCrowd": "859",
+ "PanicLink": "85A",
+ "PanicRun": "85B"
 }

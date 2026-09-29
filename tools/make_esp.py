@@ -119,47 +119,28 @@ SETTINGS = [
     ('PanicOn', 1.0), ('PanicSeconds', 60.0), ('AftermathOn', 1.0),
 ]
 
-# The panic package: Fallout4.esm PACK RETravelSC03_PrestonImpersonatorFlee (001AC7CA) field for field
-# -- vanilla's alias package that makes a non-hostile NPC run from the player, built on the FleeFrom
-# template (00039A34), target the player (0x14) -- minus its quest-stage condition, with an any-time
-# schedule and a 4000-unit (57 m) run instead of 100000. (2026-09-29: the first build copied DN136_Flee,
-# which no alias in the game uses; three NPCs got it and stood still.)
-PANIC_PACK = [
-    ('PKDT', '003000001200020031f80000'), ('PSDT', 'ffff00ffff00000000000000'),
-    ('PKCU', '08000000349a030001000000'),
-    ('ANAM', '53696e676c6552656600'), ('PTDA', '000000001400000000000000'),
-    ('ANAM', '466c6f617400'), ('CNAM', '00007a45'),
-    ('ANAM', '466c6f617400'), ('CNAM', '00004843'),
-    ('ANAM', '426f6f6c00'), ('CNAM', '00'), ('ANAM', '426f6f6c00'), ('CNAM', '01'),
-    ('ANAM', '426f6f6c00'), ('CNAM', '01'), ('ANAM', '426f6f6c00'), ('CNAM', '00'),
-    ('ANAM', '426f6f6c00'), ('CNAM', '01'),
-    ('UNAM', '0e'), ('UNAM', '0a'), ('UNAM', '03'), ('UNAM', '07'), ('UNAM', '08'), ('UNAM', '0b'),
-    ('UNAM', '0c'), ('UNAM', '0d'), ('XNAM', '0f'),
-    ('POBA', ''), ('INAM', '00000000'), ('PDTO', '0000000000000000'),
-    ('POEA', ''), ('INAM', '00000000'), ('PDTO', '0000000000000000'),
-    ('POCA', ''), ('INAM', '00000000'), ('PDTO', '0000000000000000'),
-]
-# DIAGNOSTIC (2026-09-29): with PANIC_PACK alone, 12 of 12 NPCs kept their own package, quest running,
-# none in combat. The alias now offers three, first that can run wins, and the panic logs which one each
-# NPC runs: this second flee, shaped on FFDiamondCity12CrowdFleePkg (001CBF54, the market crowd fleeing
-# a shooter, non-combat) but from the player; then vanilla HoldPosition, which only proves the alias
-# package reached them.
-PANIC_PACK_CROWD = [
-    ('PKDT', '000000001200026f75000000'), ('PSDT', 'ffff00ffff00000000000000'),
-    ('PKCU', '08000000349a030001000000'),
-    ('ANAM', '53696e676c6552656600'), ('PTDA', '000000001400000000000000'),
-    ('ANAM', '466c6f617400'), ('CNAM', '00007a45'),
-    ('ANAM', '466c6f617400'), ('CNAM', '00004843'),
-    ('ANAM', '426f6f6c00'), ('CNAM', '00'), ('ANAM', '426f6f6c00'), ('CNAM', '01'),
-    ('ANAM', '426f6f6c00'), ('CNAM', '01'), ('ANAM', '426f6f6c00'), ('CNAM', '01'),
-    ('ANAM', '426f6f6c00'), ('CNAM', '00'),
-    ('UNAM', '0e'), ('UNAM', '0a'), ('UNAM', '03'), ('UNAM', '07'), ('UNAM', '08'), ('UNAM', '0b'),
-    ('UNAM', '0c'), ('UNAM', '0d'), ('XNAM', '0f'),
-    ('POBA', ''), ('INAM', '00000000'), ('PDTO', '0000000000000000'),
-    ('POEA', ''), ('INAM', '00000000'), ('PDTO', '0000000000000000'),
-    ('POCA', ''), ('INAM', '00000000'), ('PDTO', '0000000000000000'),
-]
-VANILLA_HOLD_POSITION = 0x01D415
+# The panic package. Measured 2026-09-29: FO4's Flee procedure does nothing outside combat. With two
+# vanilla-shaped flee packages (RETravelSC03_PrestonImpersonatorFlee, FFDiamondCity12CrowdFleePkg) and
+# vanilla HoldPosition on the alias, 14 of 14 Diamond City NPCs ran HoldPosition: the alias reached them,
+# both flees gave up. (Their ids, PanicFlee 831 and PanicFleeCrowd 859, stay retired.)
+# So the panic is a RUN: a Travel package (template Travel 00002CB0) to the NPC's linked reference by our
+# own keyword -- a marker the script keeps placing 25 m further away from the player. Shaped on
+# BoS302BRailroadAgentRunPackage (0017FC63), a running travel to a linked ref, minus its quest condition,
+# with an any-time schedule. A keyword-typed link never touches the NPC's default linked ref (patrols,
+# sandbox, workshop).
+def panic_run_pack(link_keyword):
+    return [
+        ('PKDT', '002080001200026440000000'), ('PSDT', 'ffff00ffff00000000000000'),
+        ('PKCU', '04000000b02c000001000000'),
+        ('ANAM', '4c6f636174696f6e00'),
+        ('PLDT', struct.pack('<IIII', 6, link_keyword, 128, 0).hex()),
+        ('ANAM', '426f6f6c00'), ('CNAM', '00'), ('ANAM', '426f6f6c00'), ('CNAM', '00'),
+        ('ANAM', '426f6f6c00'), ('CNAM', '00'),
+        ('UNAM', '01'), ('UNAM', '03'), ('UNAM', '05'), ('UNAM', '07'), ('XNAM', '08'),
+        ('POBA', ''), ('INAM', '00000000'), ('PDTO', '0000000000000000'),
+        ('POEA', ''), ('INAM', '00000000'), ('PDTO', '0000000000000000'),
+        ('POCA', ''), ('INAM', '00000000'), ('PDTO', '0000000000000000'),
+    ]
 
 # vanilla base (Fallout4.esm) -> our spawn key
 TARGETS = [
@@ -329,7 +310,8 @@ def build():
     quest += field('NEXT', b'')
     quest_rec = record('QUST', quest_id, quest)
 
-    pack_id = new_id('PanicFlee')
+    link_id = new_id('PanicLink')
+    pack_id = new_id('PanicRun')
     accident_id = new_id('AccidentQuest')
 
     # The voices: one Dialogue Branch owning a topic per clip, each with one line, all in the accident
@@ -386,19 +368,17 @@ def build():
     sq += field('NEXT', b'')
     quest_rec += record('QUST', sounds_quest_id, sq)
 
-    pack = field('EDID', zstring('AN76T_PanicFlee'))
-    for sig, hexdata in PANIC_PACK:
+    pack = field('EDID', zstring('AN76T_PanicRun'))
+    for sig, hexdata in panic_run_pack(link_id):
         pack += field(sig, bytes.fromhex(hexdata))
     pack_rec = record('PACK', pack_id, pack)
-    pack2_id = new_id('PanicFleeCrowd')
-    pack2 = field('EDID', zstring('AN76T_PanicFleeCrowd'))
-    for sig, hexdata in PANIC_PACK_CROWD:
-        pack2 += field(sig, bytes.fromhex(hexdata))
-    pack_rec += record('PACK', pack2_id, pack2)
+    kywd_rec = record('KYWD', link_id, field('EDID', zstring('AN76T_PanicLink'))
+                      + field('CNAM', bytes.fromhex('00808000')) + field('TNAM', struct.pack('<I', 0)))
 
     aq = field('EDID', zstring('AN76T_Accident'))
     aq += field('VMAD', vmad('AN76Toilets:Accident', [
-        ('Panicked', 1, struct.pack('<HhI', 0, 0, accident_id))] + [
+        ('Panicked', 1, struct.pack('<HhI', 0, 0, accident_id)),
+        ('PanicLink', 1, obj(link_id))] + [
         (n, 1, obj(ids['Sound_' + n])) for n in
         ('AccidentPoop', 'AccidentPee', 'Squelch')] + [
         (n + 'Lines', 11, topic_array(n)) for n in ('ScreamMale', 'ScreamFemale', 'GagMale', 'GagFemale')] + [
@@ -414,8 +394,6 @@ def build():
     aq += field('ALID', zstring('Panicked'))
     aq += field('FNAM', struct.pack('<I', 0x202))
     aq += field('ALPC', struct.pack('<I', pack_id))
-    aq += field('ALPC', struct.pack('<I', pack2_id))
-    aq += field('ALPC', struct.pack('<I', VANILLA_HOLD_POSITION))
     aq += field('VTCK', struct.pack('<I', 0))
     aq += field('ALED', b'')
     quest_rec += record('QUST', accident_id, aq) + child_group(accident_id, 10, dialogue)
@@ -429,7 +407,7 @@ def build():
     header += field('MAST', zstring(MASTER))
     header += field('DATA', struct.pack('<Q', 0))
     body = (group('GLOB', glob) + group('SNDR', sndr) + group('ACTI', acti) + group('FURN', furn)
-            + group('FLST', flst_rec + an76_list) + group('PACK', pack_rec) + group('QUST', quest_rec))
+            + group('FLST', flst_rec + an76_list) + group('KYWD', kywd_rec) + group('PACK', pack_rec) + group('QUST', quest_rec))
     return record('TES4', 0, header, flags=TES4_LIGHT) + body, ids
 
 

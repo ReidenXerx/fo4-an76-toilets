@@ -8,7 +8,9 @@ not in a scene or talking to the player runs from the player for a while; then t
 and they go back to whatever they were doing. Nothing on them is changed for good.}
 
 RefCollectionAlias Property Panicked Auto Const Mandatory
-{The people running away. Its package is AN76T_PanicFlee: flee from the player.}
+{The people running away. Its package, AN76T_PanicRun, runs to their PanicLink linked reference.}
+Keyword Property PanicLink Auto Const Mandatory
+{Links each panicked NPC to its own marker, placed away from the player; never their default link.}
 
 Sound Property AccidentPoop Auto Const Mandatory
 Sound Property AccidentPee Auto Const Mandatory
@@ -27,6 +29,9 @@ GlobalVariable Property AftermathOn Auto Const Mandatory
 
 Float Property PanicRadius = 1750.0 Auto Const
 {25 m.}
+Float Property RunDistance = 1800.0 Auto Const
+{How far each run goes before the next target: about 25 m, away from the player.}
+Int Property XMARKER = 0x00003B AutoReadOnly            ; Static XMarker (Fallout4.esm)
 Int Property MaxPanicked = 24 Auto Const
 Float Property GagRadius = 450.0 Auto Const
 {About 6 m: close enough to smell you.}
@@ -214,7 +219,7 @@ Int Function PanicAmong(ObjectReference[] akRefs, Actor akPlayer)
 		If WillPanic(a, akPlayer)
 			Panicked.AddRef(a)
 			Face(a, FACE_AFRAID)
-			a.EvaluatePackage(False)
+			RunFrom(a, akPlayer)
 			If added < 6
 				Scream(a)
 				Utility.Wait(Utility.RandomFloat(0.05, 0.3))
@@ -259,6 +264,47 @@ Function Speak(Actor akActor, Topic[] akLines)
 	akActor.Say(akLines[Utility.RandomInt(0, akLines.Length - 1)], None, False, None)
 EndFunction
 
+; Points the NPC's panic marker 25 m further away from the player (fanned a little sideways, so a crowd
+; scatters instead of running in a line) and makes it run there now.
+Function RunFrom(Actor akActor, Actor akPlayer)
+	Float dx = akActor.GetPositionX() - akPlayer.GetPositionX()
+	Float dy = akActor.GetPositionY() - akPlayer.GetPositionY()
+	Float len = Math.Sqrt(dx * dx + dy * dy)
+	If len < 1.0
+		Float angle = Utility.RandomFloat(0.0, 360.0)
+		dx = Math.Cos(angle)
+		dy = Math.Sin(angle)
+		len = 1.0
+	EndIf
+	Float spread = Utility.RandomFloat(-0.6, 0.6)
+	Float ux = dx / len - spread * dy / len
+	Float uy = dy / len + spread * dx / len
+	Float ul = Math.Sqrt(ux * ux + uy * uy)
+	ObjectReference marker = akActor.GetLinkedRef(PanicLink)
+	If !marker
+		marker = akActor.PlaceAtMe(Vanilla(XMARKER), 1, False, False, False)
+		akActor.SetLinkedRef(marker, PanicLink)
+	EndIf
+	marker.SetPosition(akActor.GetPositionX() + ux / ul * RunDistance, akActor.GetPositionY() + uy / ul * RunDistance, akActor.GetPositionZ())
+	akActor.EvaluatePackage(False)
+EndFunction
+
+; Every tick: whoever reached their marker, or has the player close again, runs on.
+Function KeepRunning()
+	Actor player = Game.GetPlayer()
+	Int i = 0
+	While i < Panicked.GetCount()
+		Actor a = Panicked.GetAt(i) as Actor
+		If a && a.Is3DLoaded() && !a.IsDead()
+			ObjectReference marker = a.GetLinkedRef(PanicLink)
+			If !marker || a.GetDistance(marker) < 300.0 || a.GetDistance(player) < 500.0
+				RunFrom(a, player)
+			EndIf
+		EndIf
+		i += 1
+	EndWhile
+EndFunction
+
 ; Three seconds in: what each panicked NPC is actually running, and how far from the player.
 Function LogPanic()
 	Actor player = Game.GetPlayer()
@@ -285,6 +331,11 @@ Function EndPanic()
 	Panicked.RemoveAll()
 	i = 0
 	While i < calm.Length
+		ObjectReference marker = calm[i].GetLinkedRef(PanicLink)
+		calm[i].SetLinkedRef(None, PanicLink)
+		If marker
+			marker.Delete()
+		EndIf
 		Face(calm[i], 0)
 		calm[i].EvaluatePackage(False)
 		i += 1
@@ -403,12 +454,15 @@ Event OnTimer(Int aiTimerID)
 			_panicLogged = True
 			LogPanic()
 		EndIf
+		KeepRunning()
 		; Someone screams again, now and then.
-		Actor a = Panicked.GetAt(Utility.RandomInt(0, Panicked.GetCount() - 1)) as Actor
-		If a && a.Is3DLoaded() && !a.IsDead()
-			Scream(a)
+		If Utility.RandomInt(0, 1) == 0
+			Actor a = Panicked.GetAt(Utility.RandomInt(0, Panicked.GetCount() - 1)) as Actor
+			If a && a.Is3DLoaded() && !a.IsDead()
+				Scream(a)
+			EndIf
 		EndIf
-		Float nextIn = Utility.RandomFloat(3.0, 6.0)
+		Float nextIn = 2.0
 		If nextIn > left
 			nextIn = left
 		EndIf
