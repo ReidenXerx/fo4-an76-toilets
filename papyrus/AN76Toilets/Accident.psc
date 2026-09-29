@@ -19,8 +19,14 @@ Topic[] Property GagMaleLines Auto Const Mandatory
 Topic[] Property GagFemaleLines Auto Const Mandatory
 {Voices: spoken lines with lip sync, one topic per clip, in every vanilla human and ghoul voice type.
 An NPC with a voice type from another mod shows the subtitle without the audio.}
-Sound Property Squelch Auto Const Mandatory
-{Soggy pants, while the player walks. (Owner, 2026-09-29: the flies went.)}
+Topic[] Property PukeMaleLines Auto Const Mandatory
+Topic[] Property PukeFemaleLines Auto Const Mandatory
+{Someone close throws up instead of just gagging, now and then.}
+Sound Property FartShort Auto Const Mandatory
+Sound Property FartWet Auto Const Mandatory
+{Aftershocks while the soiled player walks. (Owner 2026-09-29: flies out; the squelch sounded like sex.)}
+Int Property PukePercent = 30 Auto Const
+{Chance that the one gagging near a soiled player throws up instead.}
 
 GlobalVariable Property PanicOn Auto Const Mandatory
 GlobalVariable Property PanicSeconds Auto Const Mandatory
@@ -41,6 +47,7 @@ Int Property FACE_TIMER = 3 AutoReadOnly
 Int Property DEBUG_PANIC_TIMER = 10 AutoReadOnly
 Int Property DEBUG_SOIL_TIMER = 11 AutoReadOnly
 Int Property DEBUG_SCREAM_TIMER = 12 AutoReadOnly
+Int Property DEBUG_PUKE_TIMER = 13 AutoReadOnly
 Int Property AN76_BATHING_POTION = 0x03303C AutoReadOnly ; Potion Flashy_Hygiene_BathingPotion
 
 ; Fallout4.esm
@@ -48,6 +55,7 @@ Int Property KW_HUMAN = 0x02CB72 AutoReadOnly           ; Keyword ActorTypeHuman
 Int Property KW_GHOUL = 0x0EAFB7 AutoReadOnly           ; Keyword ActorTypeGhoul
 Int Property IDLE_COWER = 0x22C668 AutoReadOnly        ; Idle cowerStart (RaiderRootBehavior: humans)
 Int Property IDLE_STOP = 0x029380 AutoReadOnly         ; Idle LooseIdleStop
+Int Property IDLE_RETCH = 0x0EA85C AutoReadOnly        ; Idle MTCoughing: bent over, heaving
 Int Property FACE_AFRAID = 0x0FA84B AutoReadOnly        ; Keyword AnimFaceArchetypeAfraid
 Int Property FACE_DISGUST = 0x0C8674 AutoReadOnly       ; Keyword AnimFaceArchetypeDisgust
 Int Property FACE_IN_PAIN = 0x100286 AutoReadOnly       ; Keyword AnimFaceArchetypeInPain
@@ -69,6 +77,7 @@ Bool _odour = False
 Float _soiledUntil = 0.0
 Float _panicUntil = 0.0
 Actor _gagger = None
+Actor _talker = None     ; whoever the player was talking to when it happened: the conversation ends
 Int _stinkTick = 0
 Float _lastX = 0.0
 Float _lastY = 0.0
@@ -131,6 +140,15 @@ Function Trigger(Bool abPoop, Bool abSounds)
 	EndIf
 	Actor player = Game.GetPlayer()
 	_sounds = abSounds
+	; Mid-conversation (a trader, anyone): the talk ends the moment it happens, as if the player had walked
+	; off, and whoever it was panics with the rest. F4SE's UI closes the menus; walking away from a
+	; conversation is something the game always allows, so no quest is left half-way.
+	_talker = player.GetDialogueTarget()
+	If _talker || UI.IsMenuOpen("DialogueMenu") || UI.IsMenuOpen("BarterMenu")
+		UI.CloseMenu("BarterMenu")
+		UI.CloseMenu("DialogueMenu")
+		Debug.Trace("AN76 Toilets: accident mid-conversation with " + _talker + " - conversation ended", 0)
+	EndIf
 	Debug.Trace("AN76 Toilets: ACCIDENT - poop " + abPoop + ", panic " + PanicOn.GetValueInt() + ", aftermath " + AftermathOn.GetValueInt(), 0)
 	InputEnableLayer layer = None
 	If !player.IsInCombat()
@@ -242,7 +260,11 @@ Bool Function WillPanic(Actor akActor, Actor akPlayer)
 	If akActor.IsPlayerTeammate() || akActor.IsInFaction(Vanilla(COMPANION_FACTION) as Faction)
 		Return False
 	EndIf
-	If akActor.IsInScene() || akActor.IsInDialogueWithPlayer() || Panicked.Find(akActor) >= 0
+	If Panicked.Find(akActor) >= 0
+		Return False
+	EndIf
+	; The one the player was talking to: that conversation is over now.
+	If akActor != _talker && (akActor.IsInScene() || akActor.IsInDialogueWithPlayer())
 		Return False
 	EndIf
 	Return True
@@ -351,26 +373,50 @@ Function Stink()
 		Float moved = Math.Sqrt(Math.Pow(player.GetPositionX() - _lastX, 2.0) + Math.Pow(player.GetPositionY() - _lastY, 2.0))
 		_lastX = player.GetPositionX()
 		_lastY = player.GetPositionY()
-		If _sounds && moved > 120.0 && moved < 3000.0
-			Squelch.Play(player)
+		If _sounds && moved > 120.0 && moved < 3000.0 && Utility.RandomInt(0, 2) == 0
+			If Utility.RandomInt(0, 1) == 0
+				FartShort.Play(player)
+			Else
+				FartWet.Play(player)
+			EndIf
 		EndIf
 		Actor near = None
 		If _stinkTick % GagTicks == 0
 			near = SomeoneNear(player)
 		EndIf
 		If near
-			Face(near, FACE_DISGUST)
-			If _sounds
-				If near.GetLeveledActorBase().GetSex() == 1
-					Speak(near, GagFemaleLines)
-				Else
-					Speak(near, GagMaleLines)
+			If Utility.RandomInt(1, 100) <= PukePercent
+				Puke(near, True)
+			Else
+				Face(near, FACE_DISGUST)
+				If _sounds
+					If near.GetLeveledActorBase().GetSex() == 1
+						Speak(near, GagFemaleLines)
+					Else
+						Speak(near, GagMaleLines)
+					EndIf
 				EndIf
 			EndIf
 			_gagger = near
 		EndIf
 	EndIf
 	StartTimer(StinkSeconds, STINK_TIMER)
+EndFunction
+
+; Throws up: the disgust face, the heave (bent over, unless they are cowering), the sound.
+Function Puke(Actor akActor, Bool abBendOver)
+	Face(akActor, FACE_DISGUST)
+	If abBendOver
+		akActor.PlayIdle(Vanilla(IDLE_RETCH) as Idle)
+	EndIf
+	If _sounds
+		If akActor.GetLeveledActorBase().GetSex() == 1
+			Speak(akActor, PukeFemaleLines)
+		Else
+			Speak(akActor, PukeMaleLines)
+		EndIf
+	EndIf
+	Debug.Trace("AN76 Toilets: " + akActor + " throws up", 0)
 EndFunction
 
 ; Companions included: they are the ones standing next to you.
@@ -412,7 +458,13 @@ Event OnTimer(Int aiTimerID)
 		If Utility.RandomInt(0, 1) == 0
 			Actor a = Panicked.GetAt(Utility.RandomInt(0, Panicked.GetCount() - 1)) as Actor
 			If a && a.Is3DLoaded() && !a.IsDead()
-				Scream(a)
+				; Close enough to smell it: sometimes they throw up instead.
+				If a.GetDistance(Game.GetPlayer()) < 700.0 && Utility.RandomInt(0, 3) == 0
+					Puke(a, False)
+					Face(a, FACE_AFRAID)
+				Else
+					Scream(a)
+				EndIf
 			EndIf
 		EndIf
 		Float nextIn = 2.0
@@ -430,6 +482,16 @@ Event OnTimer(Int aiTimerID)
 	ElseIf aiTimerID == DEBUG_SOIL_TIMER
 		_sounds = True
 		Soil(Game.GetPlayer())
+	ElseIf aiTimerID == DEBUG_PUKE_TIMER
+		Actor near = SomeoneNear(Game.GetPlayer())
+		If near
+			_sounds = True
+			Puke(near, True)
+			Utility.Wait(4.0)
+			Face(near, 0)
+		Else
+			Debug.Notification("AN76 Toilets debug: nobody within 6 m.")
+		EndIf
 	ElseIf aiTimerID == DEBUG_SCREAM_TIMER
 		Actor near = SomeoneNear(Game.GetPlayer())
 		If near
@@ -473,6 +535,11 @@ Function DebugClean()
 	_odour = False
 	_soiled = False
 	Debug.Notification("AN76 Toilets debug: clean.")
+EndFunction
+
+Function DebugPuke()
+	StartTimer(0.5, DEBUG_PUKE_TIMER)
+	Debug.Notification("AN76 Toilets debug: the nearest person throws up when you close the menu.")
 EndFunction
 
 Function DebugScream()

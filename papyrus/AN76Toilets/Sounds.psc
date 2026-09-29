@@ -308,7 +308,8 @@ Event OnTimer(Int aiTimerID)
 
 	Bool isGoing = player.HasKeyword(busy)
 	Int stage = Urgency(hasPain)
-	If stage >= 3 && AccidentsOn.GetValueInt() == 1 && !isGoing && !_going && !player.IsInScene()
+	; A quest scene holds it back (the player is not free); a conversation does not -- the accident ends it.
+	If stage >= 3 && AccidentsOn.GetValueInt() == 1 && !isGoing && !_going && (!player.IsInScene() || player.GetDialogueTarget())
 		ShowStage(3)
 		HadAccident(player)
 		stage = 0

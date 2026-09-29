@@ -49,7 +49,9 @@ SOUNDS = {
     'FartShort': ['fart_short'], 'FartLong': ['fart_long'], 'FartWet': ['fart_wet'],
     'Plop': ['plop'], 'Explosive': ['explosive'],
     'Paper': ['paper'], 'ZipDown': ['zip/down'], 'ZipUp': ['zip/up'], 'Stream': ['urinal'],
-    'AccidentPoop': ['accident/accident_1'], 'AccidentPee': ['accident/accident_2'], 'Squelch': ['squelch'],
+    # AccidentPoop: explosive diarrhea with long farts (owner 2026-09-29; the first clip did not fit).
+    # The squelch that replaced the flies went too: the owner heard sex in it (recipe handed to anatomy).
+    'AccidentPoop': ['accident_poop'], 'AccidentPee': ['accident/accident_2'],
 }
 SOUND_ROOT = pathlib.Path(__file__).resolve().parents[1] / 'sounds' / 'src'
 
@@ -75,6 +77,8 @@ VOICE = {
     'ScreamFemale': ('scream_f', 'npc-female', 'AAAAAAH!', VOWEL_RUN, FACE_AFRAID),
     'GagMale': ('gag_m', 'npc-male', '*gags*', 'Ugh hhk bleh', FACE_DISGUST),
     'GagFemale': ('gag_f', 'npc-female', '*gags*', 'Ugh hhk bleh', FACE_DISGUST),
+    'PukeMale': ('puke_m', 'npc-male', '*vomits*', VOWEL_RUN, FACE_DISGUST),
+    'PukeFemale': ('puke_f', 'npc-female', '*vomits*', VOWEL_RUN, FACE_DISGUST),
     'StrainMale': ('strain_m', 'player-male', 'Nnnngh!', VOWEL_RUN, FACE_IN_PAIN),
     'StrainFemale': ('strain_f', 'player-female', 'Nnnngh!', VOWEL_RUN, FACE_IN_PAIN),
     'ReliefMale': ('relief_m', 'player-male', 'Ahhhh...', VOWEL_RUN, FACE_RELIEVED),
@@ -359,8 +363,9 @@ def build():
         ('Panicked', 1, struct.pack('<HhI', 0, 0, accident_id)),
         ] + [
         (n, 1, obj(ids['Sound_' + n])) for n in
-        ('AccidentPoop', 'AccidentPee', 'Squelch')] + [
-        (n + 'Lines', 11, topic_array(n)) for n in ('ScreamMale', 'ScreamFemale', 'GagMale', 'GagFemale')] + [
+        ('AccidentPoop', 'AccidentPee', 'FartShort', 'FartWet')] + [
+        (n + 'Lines', 11, topic_array(n)) for n in
+        ('ScreamMale', 'ScreamFemale', 'GagMale', 'GagFemale', 'PukeMale', 'PukeFemale')] + [
         (n, 1, obj(ids['Setting_' + n])) for n in ('PanicOn', 'PanicSeconds', 'AftermathOn')]))
     aq += field('DNAM', bytes.fromhex('110064670000000000000000'))
     aq += field('NEXT', b'')

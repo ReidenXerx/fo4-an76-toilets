@@ -92,5 +92,13 @@
  "PanicLink": "85A",
  "PanicRun": "85B",
  "PanicFearEffect": "85C",
- "PanicFear": "85D"
+ "PanicFear": "85D",
+ "Topic_PukeMale1": "85E",
+ "Line_PukeMale1": "85F",
+ "Topic_PukeMale2": "860",
+ "Line_PukeMale2": "861",
+ "Topic_PukeFemale1": "862",
+ "Line_PukeFemale1": "863",
+ "Topic_PukeFemale2": "864",
+ "Line_PukeFemale2": "865"
 }

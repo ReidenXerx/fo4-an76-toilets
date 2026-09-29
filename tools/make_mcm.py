@@ -76,7 +76,8 @@ def build():
         slider('Panic length (seconds)', 'Setting_PanicSeconds', 10.0, 180.0, 5.0, 'Default 60.'),
         switcher('Aftermath', 'Setting_AftermathOn',
                  "You stink: AN76's body odour until you bathe or swim (with AN76's bathing on; otherwise "
-                 "6 game hours). Gnats where it happened, flies buzzing, and people near you gag and pull a face."),
+                 "6 game hours). Gnats where it happened, aftershock farts as you walk, and people near you gag, "
+                 "pull a face, or throw up."),
         {'text': 'Sounds', 'type': 'section'},
         switcher('Bathroom sounds', 'Setting_SoundsOn',
                  'The stomach rumble when the need hits; straining, farts, plops and a sigh of relief '
@@ -107,6 +108,8 @@ def build():
         button('Soil me', 'AccidentQuest', 'DebugSoil', 'The aftermath alone: body odour, gnats, flies, gagging.'),
         button('Clean me', 'AccidentQuest', 'DebugClean', "Ends the aftermath and washes off AN76's body odour."),
         {'text': 'Voices and lip sync', 'type': 'section'},
+        button('Nearest person throws up', 'AccidentQuest', 'DebugPuke',
+               'Someone within 6 m bends over and vomits.'),
         button('Nearest person screams', 'AccidentQuest', 'DebugScream',
                'Someone within 6 m screams, to check the voice and the mouth.'),
         button('Player strains and sighs', 'SoundsQuest', 'DebugVoice',
