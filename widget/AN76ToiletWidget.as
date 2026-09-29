@@ -21,6 +21,8 @@ package
    public class AN76ToiletWidget extends MovieClip implements IHUDWidget
    {
       private static const ICON_PX:Number = 40;
+      // A touch under the row's own icons (owner, 2026-09-30: "slightly smaller"); the MCM size multiplies this.
+      private static const BASE_SIZE:Number = 0.85;
 
       private var _holder:DisplayObjectContainer = null;
       private var _widget:Object = null;
@@ -99,7 +101,7 @@ package
             {
                // No status row on this HUD: stay where HUDFramework placed the widget, at the MCM size.
                x = y = 0;
-               scaleX = scaleY = _size;
+               scaleX = scaleY = _size * BASE_SIZE;
                _searchCooldown = 120;
                return;
             }
@@ -145,8 +147,10 @@ package
             shown = bounds.height;
          }
          var slot:Point = _holder.localToGlobal(new Point(first.x + step.x * (last + 1),first.y + step.y * (last + 1)));
-         slot.x += offset.x + _nudgeX;
-         slot.y += offset.y + _nudgeY;
+         // Smaller than the slot: centred in it, so the icon keeps its place in the row.
+         var inset:Number = shown * _size * (1 - BASE_SIZE) / 2;
+         slot.x += offset.x + _nudgeX + inset;
+         slot.y += offset.y + _nudgeY + inset;
          var local:Point = parent.globalToLocal(slot);
          x = local.x;
          y = local.y;
@@ -155,7 +159,7 @@ package
          {
             parentScale = 1;
          }
-         scaleX = scaleY = shown * _size / (ICON_PX * parentScale);
+         scaleX = scaleY = shown * _size * BASE_SIZE / (ICON_PX * parentScale);
       }
    }
 }
