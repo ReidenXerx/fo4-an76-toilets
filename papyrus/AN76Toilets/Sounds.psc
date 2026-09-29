@@ -80,6 +80,8 @@ Bool _painTaken = False     ; we took AN76's pain away (accidents on)
 Float _heldHours = 0.0      ; game hours held, sleep left out
 Float _lastTick = 0.0       ; game days
 Bool _sleeping = False
+Form[] _worn               ; what the player wore while the need was pending, to put back after
+Float _redressCheckAt = 0.0 ; real time: when to look for clothes AN76 did not put back (0 = no check due)
 Bool _debugAccident = False  ; set by the MCM's Debug page, acted on once the menu is closed
 Bool _debugVoice = False
 
@@ -316,6 +318,13 @@ Event OnTimer(Int aiTimerID)
 	EndIf
 	ShowStage(stage)
 
+	If !isGoing && !_going && stack && stack.GetValueInt() == 1
+		_worn = WornNow(player)
+	EndIf
+	If _redressCheckAt > 0.0 && Utility.GetCurrentRealTime() >= _redressCheckAt
+		_redressCheckAt = 0.0
+		PutBackClothes(player)
+	EndIf
 	If isGoing && !_going
 		Debug.Trace("AN76 Toilets: going (sounds " + SoundsOn() + ", sick " + Sick(player) + ")", 0)
 		_going = True
@@ -328,6 +337,8 @@ Event OnTimer(Int aiTimerID)
 			Going(player)
 		Else
 			Debug.Trace("AN76 Toilets: finished after " + ((Utility.GetCurrentRealTime() - _goingSince) as Int) + " s, poop " + _pooping, 0)
+			; AN76 redresses before it lets go of the player; look two seconds later for anything it missed.
+			_redressCheckAt = Utility.GetCurrentRealTime() + 2.0
 			Finished(player)
 			_going = False
 		EndIf
@@ -347,6 +358,45 @@ Event OnTimer(Int aiTimerID)
 		StartTimer(WatchSeconds, WATCH_TIMER)
 	EndIf
 EndEvent
+
+; ---- clothes -------------------------------------------------------------------------------
+; AN76's "go naked" strips every slot and re-equips what its OnItemUnequipped event recorded; on the
+; owner's setup that came back empty (2026-09-29: "we dont redressed back"), with no error in the log.
+; So while the need is pending this remembers what the player wears (F4SE GetWornItem), and after AN76
+; lets go it puts back whatever is still off and still in the inventory. Nothing AN76 did put back is
+; touched, and nothing is equipped that was not worn a moment before.
+
+Form[] Function WornNow(Actor akPlayer)
+	Form[] worn = new Form[0]
+	Int slot = 0
+	While slot < 32
+		Actor:WornItem w = akPlayer.GetWornItem(slot, False)
+		If w && w.item && worn.Find(w.item) < 0 && akPlayer.GetItemCount(w.item) > 0
+			worn.Add(w.item)
+		EndIf
+		slot += 1
+	EndWhile
+	Return worn
+EndFunction
+
+Function PutBackClothes(Actor akPlayer)
+	If !_worn
+		Return
+	EndIf
+	Int putBack = 0
+	Int i = 0
+	While i < _worn.Length
+		Form item = _worn[i]
+		If item && !akPlayer.IsEquipped(item) && akPlayer.GetItemCount(item) > 0
+			akPlayer.EquipItem(item, False, True)
+			putBack += 1
+		EndIf
+		i += 1
+	EndWhile
+	If putBack > 0
+		Debug.Trace("AN76 Toilets: AN76 left " + putBack + " of " + _worn.Length + " worn items off - put them back on", 0)
+	EndIf
+EndFunction
 
 ; ---- holding it ----------------------------------------------------------------------------
 
