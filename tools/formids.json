@@ -100,5 +100,21 @@
  "Topic_PukeFemale1": "862",
  "Line_PukeFemale1": "863",
  "Topic_PukeFemale2": "864",
- "Line_PukeFemale2": "865"
+ "Line_PukeFemale2": "865",
+ "Topic_GagMale2": "866",
+ "Line_GagMale2": "867",
+ "Topic_GagMale3": "868",
+ "Line_GagMale3": "869",
+ "Topic_GagMale4": "86A",
+ "Line_GagMale4": "86B",
+ "Topic_GagMale5": "86C",
+ "Line_GagMale5": "86D",
+ "Topic_GagFemale2": "86E",
+ "Line_GagFemale2": "86F",
+ "Topic_GagFemale3": "870",
+ "Line_GagFemale3": "871",
+ "Topic_GagFemale4": "872",
+ "Line_GagFemale4": "873",
+ "Topic_GagFemale5": "874",
+ "Line_GagFemale5": "875"
 }
