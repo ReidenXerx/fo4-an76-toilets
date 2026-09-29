@@ -38,6 +38,33 @@ def lipgen_copy():
     return private / 'LipGenerator.exe'
 
 
+def vowel_run_lip(wav, work):
+    # A synthetic "ah ah ah ..." (Windows speech, about 4.7 syllables a second) stretched to the clip's
+    # length, lipped with the same text: the open-jaw bells overlap into one held open mouth.
+    seconds = float(subprocess.run(['ffprobe', '-v', 'error', '-show_entries', 'format=duration', '-of',
+                                    'csv=p=0', str(wav)], capture_output=True, text=True, check=True).stdout)
+    n = max(3, round(seconds * 4.7))
+    text = ' '.join(['ah'] * n)
+    tts = work / 'ahs_tts.wav'
+    tts.unlink(missing_ok=True)
+    ps = ("Add-Type -AssemblyName System.Speech; $s=New-Object System.Speech.Synthesis.SpeechSynthesizer; "
+          f"$s.Rate=2; $s.SetOutputToWaveFile('{tts}'); $s.Speak('{text}'); $s.Dispose()")
+    subprocess.run(['powershell', '-NoProfile', '-Command', ps], check=True, capture_output=True)
+    tts_seconds = float(subprocess.run(['ffprobe', '-v', 'error', '-show_entries', 'format=duration', '-of',
+                                        'csv=p=0', str(tts)], capture_output=True, text=True, check=True).stdout)
+    tempo = min(2.0, max(0.5, tts_seconds / seconds))
+    ahs = work / 'ahs.wav'
+    subprocess.run(['ffmpeg', '-y', '-loglevel', 'error', '-i', str(tts), '-ac', '1', '-ar', '44100',
+                    '-af', f'atempo={tempo:.4f}', '-c:a', 'pcm_s16le', str(ahs)], check=True)
+    lip = ahs.with_suffix('.lip')
+    lip.unlink(missing_ok=True)
+    lipgen = lipgen_copy()
+    subprocess.run([str(lipgen), str(ahs), text, '-Language:USEnglish'], cwd=str(lipgen.parent), capture_output=True)
+    if not lip.is_file() or lip.stat().st_size < 400:
+        raise SystemExit(f'the vowel-run lip for {wav} came out empty')
+    return lip
+
+
 def make_fuz(clip, lip_text, out):
     work = CACHE / 'work'
     work.mkdir(parents=True, exist_ok=True)
@@ -46,10 +73,13 @@ def make_fuz(clip, lip_text, out):
         f.unlink(missing_ok=True)
     subprocess.run(['ffmpeg', '-y', '-loglevel', 'error', '-i', str(clip), '-ac', '1', '-ar', '44100',
                     '-af', 'loudnorm=I=-16:TP=-1.5:LRA=11', '-c:a', 'pcm_s16le', str(wav)], check=True)
-    lipgen = lipgen_copy()
-    subprocess.run([str(lipgen), str(wav), lip_text, '-Language:USEnglish'], cwd=str(lipgen.parent),
-                   capture_output=True)
-    lip = wav.with_suffix('.lip')
+    if lip_text is make_esp.VOWEL_RUN:
+        lip = vowel_run_lip(wav, work)
+    else:
+        lipgen = lipgen_copy()
+        subprocess.run([str(lipgen), str(wav), lip_text, '-Language:USEnglish'], cwd=str(lipgen.parent),
+                       capture_output=True)
+        lip = wav.with_suffix('.lip')
     if not lip.is_file() or lip.stat().st_size == 0:
         raise SystemExit(f'LipGenerator wrote no .lip for {clip}')
     xwm = work / 'line.xwm'
@@ -70,7 +100,7 @@ def main():
     made = copies = 0
     for info_id, clip, lip_text, voice_types in make_esp.voice_lines(ids):
         name = f'{info_id & 0xFFFFFF:08X}_1.fuz'
-        stamp = hashlib.sha1(f'{clip.name}|{lip_text}|32000'.encode()).hexdigest()[:10]
+        stamp = hashlib.sha1(f'{clip.name}|{lip_text or "vowel-run-2"}|32000'.encode()).hexdigest()[:10]
         cached = CACHE / 'fuz' / f'{name[:-4]}-{stamp}.fuz'
         if not cached.is_file() or cached.stat().st_mtime < clip.stat().st_mtime:
             make_fuz(clip, lip_text, cached)

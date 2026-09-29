@@ -56,10 +56,14 @@ SOUND_ROOT = pathlib.Path(__file__).resolve().parents[1] / 'sounds' / 'src'
 # Voices: spoken through dialogue (Say) so the face moves with the line, not played as sound effects.
 # One topic with one line per clip; the script picks the clip. set -> (clip folder under voice/src, who
 # speaks it, subtitle, the text LipGenerator shapes the mouth from, the line's emotion).
-# Owner 2026-09-29: a scream is a held open mouth and a fear face, not talking. So the lip text of a
-# scream or roar is ONE long vowel (LipGenerator holds one open phoneme for the whole clip; a word-like
-# text makes the mouth chatter), and the fear comes from the line's emotion: TRDA's first field, an
-# AnimFaceArchetype keyword, as on 36k vanilla lines. The face falls back to normal when the line ends.
+# Owner 2026-09-29: a scream is a held open mouth and a fear face, not talking. The fear comes from the
+# line's emotion: TRDA's first field, an AnimFaceArchetype keyword, as on 36k vanilla lines. The open
+# mouth comes from the .lip, and a scream cannot make one: LipGenerator reads it as noise, and a single
+# long vowel gives ONE open-close bell of about half a second (measured, 132-194 byte lips; in game: no
+# mouth and no face at all). VOWEL_RUN lines take their lip from a synthetic "ah ah ah..." instead,
+# timed to the clip: the bells overlap into an open jaw held at 1.0 for the whole line (measured). The
+# gags keep a lip from their own audio -- the owner loved those as they are.
+VOWEL_RUN = None
 # (Strain, relief, screams and gags were sound effects before 2026-09-29; their SNDR ids stay retired.)
 FACE_AFRAID = 0x0FA84B     # AnimFaceArchetypeAfraid
 FACE_DISGUST = 0x0C8674    # AnimFaceArchetypeDisgust
@@ -67,14 +71,14 @@ FACE_IN_PAIN = 0x100286    # AnimFaceArchetypeInPain
 FACE_RELIEVED = 0x18E863   # AnimFaceArchetypeRelieved
 VOICE_ROOT = pathlib.Path(__file__).resolve().parents[1] / 'voice' / 'src'
 VOICE = {
-    'ScreamMale': ('scream_m', 'npc-male', 'AAAAAAH!', 'Aaaaaaaaaaaaaaah!', FACE_AFRAID),
-    'ScreamFemale': ('scream_f', 'npc-female', 'AAAAAAH!', 'Aaaaaaaaaaaaaaah!', FACE_AFRAID),
+    'ScreamMale': ('scream_m', 'npc-male', 'AAAAAAH!', VOWEL_RUN, FACE_AFRAID),
+    'ScreamFemale': ('scream_f', 'npc-female', 'AAAAAAH!', VOWEL_RUN, FACE_AFRAID),
     'GagMale': ('gag_m', 'npc-male', '*gags*', 'Ugh hhk bleh', FACE_DISGUST),
     'GagFemale': ('gag_f', 'npc-female', '*gags*', 'Ugh hhk bleh', FACE_DISGUST),
-    'StrainMale': ('strain_m', 'player-male', 'Nnnngh!', 'Aaaaarrrrgh', FACE_IN_PAIN),
-    'StrainFemale': ('strain_f', 'player-female', 'Nnnngh!', 'Aaaaarrrrgh', FACE_IN_PAIN),
-    'ReliefMale': ('relief_m', 'player-male', 'Ahhhh...', 'Ahhhhhhhhh', FACE_RELIEVED),
-    'ReliefFemale': ('relief_f', 'player-female', 'Ahhhh...', 'Ahhhhhhhhh', FACE_RELIEVED),
+    'StrainMale': ('strain_m', 'player-male', 'Nnnngh!', VOWEL_RUN, FACE_IN_PAIN),
+    'StrainFemale': ('strain_f', 'player-female', 'Nnnngh!', VOWEL_RUN, FACE_IN_PAIN),
+    'ReliefMale': ('relief_m', 'player-male', 'Ahhhh...', VOWEL_RUN, FACE_RELIEVED),
+    'ReliefFemale': ('relief_f', 'player-female', 'Ahhhh...', VOWEL_RUN, FACE_RELIEVED),
 }
 PLAYER_VOICE_TYPES = {'player-male': ['PlayerVoiceMale01'], 'player-female': ['PlayerVoiceFemale01']}
 
@@ -135,6 +139,27 @@ PANIC_PACK = [
     ('POEA', ''), ('INAM', '00000000'), ('PDTO', '0000000000000000'),
     ('POCA', ''), ('INAM', '00000000'), ('PDTO', '0000000000000000'),
 ]
+# DIAGNOSTIC (2026-09-29): with PANIC_PACK alone, 12 of 12 NPCs kept their own package, quest running,
+# none in combat. The alias now offers three, first that can run wins, and the panic logs which one each
+# NPC runs: this second flee, shaped on FFDiamondCity12CrowdFleePkg (001CBF54, the market crowd fleeing
+# a shooter, non-combat) but from the player; then vanilla HoldPosition, which only proves the alias
+# package reached them.
+PANIC_PACK_CROWD = [
+    ('PKDT', '000000001200026f75000000'), ('PSDT', 'ffff00ffff00000000000000'),
+    ('PKCU', '08000000349a030001000000'),
+    ('ANAM', '53696e676c6552656600'), ('PTDA', '000000001400000000000000'),
+    ('ANAM', '466c6f617400'), ('CNAM', '00007a45'),
+    ('ANAM', '466c6f617400'), ('CNAM', '00004843'),
+    ('ANAM', '426f6f6c00'), ('CNAM', '00'), ('ANAM', '426f6f6c00'), ('CNAM', '01'),
+    ('ANAM', '426f6f6c00'), ('CNAM', '01'), ('ANAM', '426f6f6c00'), ('CNAM', '01'),
+    ('ANAM', '426f6f6c00'), ('CNAM', '00'),
+    ('UNAM', '0e'), ('UNAM', '0a'), ('UNAM', '03'), ('UNAM', '07'), ('UNAM', '08'), ('UNAM', '0b'),
+    ('UNAM', '0c'), ('UNAM', '0d'), ('XNAM', '0f'),
+    ('POBA', ''), ('INAM', '00000000'), ('PDTO', '0000000000000000'),
+    ('POEA', ''), ('INAM', '00000000'), ('PDTO', '0000000000000000'),
+    ('POCA', ''), ('INAM', '00000000'), ('PDTO', '0000000000000000'),
+]
+VANILLA_HOLD_POSITION = 0x01D415
 
 # vanilla base (Fallout4.esm) -> our spawn key
 TARGETS = [
@@ -365,6 +390,11 @@ def build():
     for sig, hexdata in PANIC_PACK:
         pack += field(sig, bytes.fromhex(hexdata))
     pack_rec = record('PACK', pack_id, pack)
+    pack2_id = new_id('PanicFleeCrowd')
+    pack2 = field('EDID', zstring('AN76T_PanicFleeCrowd'))
+    for sig, hexdata in PANIC_PACK_CROWD:
+        pack2 += field(sig, bytes.fromhex(hexdata))
+    pack_rec += record('PACK', pack2_id, pack2)
 
     aq = field('EDID', zstring('AN76T_Accident'))
     aq += field('VMAD', vmad('AN76Toilets:Accident', [
@@ -384,6 +414,8 @@ def build():
     aq += field('ALID', zstring('Panicked'))
     aq += field('FNAM', struct.pack('<I', 0x202))
     aq += field('ALPC', struct.pack('<I', pack_id))
+    aq += field('ALPC', struct.pack('<I', pack2_id))
+    aq += field('ALPC', struct.pack('<I', VANILLA_HOLD_POSITION))
     aq += field('VTCK', struct.pack('<I', 0))
     aq += field('ALED', b'')
     quest_rec += record('QUST', accident_id, aq) + child_group(accident_id, 10, dialogue)
