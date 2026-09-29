@@ -191,6 +191,11 @@ EndFunction
 ; ---- the panic -----------------------------------------------------------------------------
 
 Function Panic(Actor akPlayer)
+	; An alias package only applies while its quest runs; a script runs either way, so check.
+	If !IsRunning()
+		Debug.Trace("AN76 Toilets: the accident quest was not running - starting it for the panic", 0)
+		Start()
+	EndIf
 	Int added = PanicAmong(akPlayer.FindAllReferencesWithKeyword(Vanilla(KW_HUMAN), PanicRadius), akPlayer)
 	added += PanicAmong(akPlayer.FindAllReferencesWithKeyword(Vanilla(KW_GHOUL), PanicRadius), akPlayer)
 	Debug.Trace("AN76 Toilets: panic - " + added + " people run from the player for " + PanicSeconds.GetValue() + " s", 0)
@@ -261,7 +266,7 @@ Function LogPanic()
 	While i < Panicked.GetCount()
 		Actor a = Panicked.GetAt(i) as Actor
 		If a
-			Debug.Trace("AN76 Toilets: panic 3 s in - " + a + " package " + a.GetCurrentPackage() + ", " + (a.GetDistance(player) as Int) + " units from the player", 0)
+			Debug.Trace("AN76 Toilets: panic 3 s in - " + a + " package " + a.GetCurrentPackage() + ", " + (a.GetDistance(player) as Int) + " units from the player, quest running " + IsRunning() + ", in combat " + a.IsInCombat(), 0)
 		EndIf
 		i += 1
 	EndWhile
