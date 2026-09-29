@@ -378,7 +378,8 @@ def build():
     aq = field('EDID', zstring('AN76T_Accident'))
     aq += field('VMAD', vmad('AN76Toilets:Accident', [
         ('Panicked', 1, struct.pack('<HhI', 0, 0, accident_id)),
-        ('PanicLink', 1, obj(link_id))] + [
+        ('PanicLink', 1, obj(link_id)),
+        ('RunPackage', 1, obj(pack_id))] + [
         (n, 1, obj(ids['Sound_' + n])) for n in
         ('AccidentPoop', 'AccidentPee', 'Squelch')] + [
         (n + 'Lines', 11, topic_array(n)) for n in ('ScreamMale', 'ScreamFemale', 'GagMale', 'GagFemale')] + [
@@ -394,6 +395,9 @@ def build():
     aq += field('ALID', zstring('Panicked'))
     aq += field('FNAM', struct.pack('<I', 0x202))
     aq += field('ALPC', struct.pack('<I', pack_id))
+    # DIAGNOSTIC: vanilla HoldPosition after the run. An NPC the log shows holding position got the
+    # alias but could not run (see the run's own trace); one on its own package never got the alias.
+    aq += field('ALPC', struct.pack('<I', 0x01D415))
     aq += field('VTCK', struct.pack('<I', 0))
     aq += field('ALED', b'')
     quest_rec += record('QUST', accident_id, aq) + child_group(accident_id, 10, dialogue)

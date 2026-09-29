@@ -11,6 +11,8 @@ RefCollectionAlias Property Panicked Auto Const Mandatory
 {The people running away. Its package, AN76T_PanicRun, runs to their PanicLink linked reference.}
 Keyword Property PanicLink Auto Const Mandatory
 {Links each panicked NPC to its own marker, placed away from the player; never their default link.}
+Package Property RunPackage Auto Const Mandatory
+{AN76T_PanicRun: an NPC not running it gets PathToReference to its marker instead.}
 
 Sound Property AccidentPoop Auto Const Mandatory
 Sound Property AccidentPee Auto Const Mandatory
@@ -282,10 +284,12 @@ Function RunFrom(Actor akActor, Actor akPlayer)
 	Float ul = Math.Sqrt(ux * ux + uy * uy)
 	ObjectReference marker = akActor.GetLinkedRef(PanicLink)
 	If !marker
-		marker = akActor.PlaceAtMe(Vanilla(XMARKER), 1, False, False, False)
+		marker = akActor.PlaceAtMe(Vanilla(XMARKER), 1, True, False, False)
 		akActor.SetLinkedRef(marker, PanicLink)
 	EndIf
 	marker.SetPosition(akActor.GetPositionX() + ux / ul * RunDistance, akActor.GetPositionY() + uy / ul * RunDistance, akActor.GetPositionZ())
+	; 25 m out in a town is often inside a wall: onto the nearest ground someone can walk.
+	marker.MoveToNearestNavmeshLocation()
 	akActor.EvaluatePackage(False)
 EndFunction
 
@@ -299,6 +303,14 @@ Function KeepRunning()
 			ObjectReference marker = a.GetLinkedRef(PanicLink)
 			If !marker || a.GetDistance(marker) < 300.0 || a.GetDistance(player) < 500.0
 				RunFrom(a, player)
+				marker = a.GetLinkedRef(PanicLink)
+			EndIf
+			If marker && a.GetCurrentPackage() != RunPackage
+				; The package would not take them: send them there directly, at a run.
+				Var[] args = new Var[2]
+				args[0] = marker
+				args[1] = 1.0
+				a.CallFunctionNoWait("PathToReference", args)
 			EndIf
 		EndIf
 		i += 1
@@ -312,7 +324,14 @@ Function LogPanic()
 	While i < Panicked.GetCount()
 		Actor a = Panicked.GetAt(i) as Actor
 		If a
-			Debug.Trace("AN76 Toilets: panic 3 s in - " + a + " package " + a.GetCurrentPackage() + ", " + (a.GetDistance(player) as Int) + " units from the player, quest running " + IsRunning() + ", in combat " + a.IsInCombat(), 0)
+			ObjectReference marker = a.GetLinkedRef(PanicLink)
+			Int toMarker = -1
+			Int markerFromPlayer = -1
+			If marker
+				toMarker = a.GetDistance(marker) as Int
+				markerFromPlayer = marker.GetDistance(player) as Int
+			EndIf
+			Debug.Trace("AN76 Toilets: panic 3 s in - " + a + " package " + a.GetCurrentPackage() + ", " + (a.GetDistance(player) as Int) + " from the player, marker " + marker + " " + toMarker + " away (" + markerFromPlayer + " from the player), in combat " + a.IsInCombat(), 0)
 		EndIf
 		i += 1
 	EndWhile
