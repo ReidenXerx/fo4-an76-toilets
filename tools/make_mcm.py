@@ -71,7 +71,7 @@ def build():
         slider('Accident after (game hours)', 'Setting_AccidentHours', 1.0, 24.0, 0.5,
                'Game hours since the need hit. Sleep does not count. Default 4.'),
         switcher('Panic', 'Setting_PanicOn',
-                 'Everyone within 25 m screams and runs from you, then goes back to what they were doing. '
+                 'Everyone within 25 m screams and cowers in horror, then goes back to what they were doing. '
                  'Not your companion, and nobody fighting, hostile, in a scene or talking to you.'),
         slider('Panic length (seconds)', 'Setting_PanicSeconds', 10.0, 180.0, 5.0, 'Default 60.'),
         switcher('Aftermath', 'Setting_AftermathOn',
@@ -102,7 +102,7 @@ def build():
         button("Clear AN76's cooldown", 'SoundsQuest', 'DebugClearCooldown',
                'AN76 ignores meals for 6 game hours after each visit; this ends that now.'),
         {'text': 'The parts', 'type': 'section'},
-        button('Panic now', 'AccidentQuest', 'DebugPanic', 'Everyone nearby screams and runs, without the accident.'),
+        button('Panic now', 'AccidentQuest', 'DebugPanic', 'Everyone nearby screams and cowers, without the accident.'),
         button('Calm everyone', 'AccidentQuest', 'DebugCalm', 'Ends a panic now.'),
         button('Soil me', 'AccidentQuest', 'DebugSoil', 'The aftermath alone: body odour, gnats, flies, gagging.'),
         button('Clean me', 'AccidentQuest', 'DebugClean', "Ends the aftermath and washes off AN76's body odour."),

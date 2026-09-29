@@ -119,22 +119,15 @@ SETTINGS = [
     ('PanicOn', 1.0), ('PanicSeconds', 60.0), ('AftermathOn', 1.0),
 ]
 
-# The panic. Measured 2026-09-29, one test each in Diamond City: no AI package moves a calm NPC away
-# from the player. Two vanilla-shaped Flee packages give up outside combat, and a running Travel to a
-# marker 25 m away gave up too (markers off navmesh, HoldPosition fallback taken by 8 of 8). Retired ids:
-# PanicFlee 831, PanicFleeCrowd 859, PanicLink 85A, PanicRun 85B.
-# So the panic is the game's own FEAR, as the Yao Guai roar does it: a Demoralize effect, whose target
-# flees from the caster and comes back to itself when it ends. It is YaoGuaiRoarFearEffect (00106FBA)
-# field for field, minus its hostile flag (0x1) -- a hostile effect cast on a bystander is an assault; this
-# one is no crime and nobody turns on you. Magnitude 999 (demoralize's level cap: everyone); 180 s, the MCM
-# maximum, dispelled when the panic ends.
-FEAR_EFFECT_DATA = bytes.fromhex(
-    '0710000400000000000000000000000000000000000000000000000000000000000000000000000000000000280000000000'
-    '0000000000000000000000000000070000000000000000000000cc7310000100000000000000000000000000000000000000'
-    '0000000000000000000000000000803f00000000000000000000000000000000000000000000000001000000000000000000'
-    '0000'
-)
-FEAR_HOSTILE = 0x1
+# The panic. Measured 2026-09-29, one test each in Diamond City: FO4 has no way to make a CALM NPC run.
+# Two vanilla-shaped Flee packages give up outside combat; a running Travel to a marker 25 m away gave up
+# (markers off navmesh); the Yao Guai roar's Demoralize landed on all 10 ("afraid True") and moved nobody,
+# since fear works through the combat AI. Retired ids: PanicFlee 831, PanicFleeCrowd 859, PanicLink 85A,
+# PanicRun 85B, PanicFearEffect 85C, PanicFear 85D.
+# Owner's call (poll 2026-09-29): cower and scream, no combat anywhere. The alias holds them with vanilla
+# HoldPosition -- the one alias package measured to reach them (14 of 14) -- so nothing walks them out of
+# the cower the script plays on them.
+PANIC_HOLD_PACKAGE = 0x01D415   # Fallout4.esm PACK HoldPosition, no conditions
 
 # vanilla base (Fallout4.esm) -> our spawn key
 TARGETS = [
@@ -304,8 +297,6 @@ def build():
     quest += field('NEXT', b'')
     quest_rec = record('QUST', quest_id, quest)
 
-    fear_effect_id = new_id('PanicFearEffect')
-    fear_spell_id = new_id('PanicFear')
     accident_id = new_id('AccidentQuest')
 
     # The voices: one Dialogue Branch owning a topic per clip, each with one line, all in the accident
@@ -362,26 +353,11 @@ def build():
     sq += field('NEXT', b'')
     quest_rec += record('QUST', sounds_quest_id, sq)
 
-    data = bytearray(FEAR_EFFECT_DATA)
-    struct.pack_into('<I', data, 0, struct.unpack_from('<I', data, 0)[0] & ~FEAR_HOSTILE)
-    mgef = field('EDID', zstring('AN76T_PanicFearEffect'))
-    mgef += field('DATA', bytes(data))
-    mgef += field('SNDD', b'')
-    mgef += field('DNAM', b'\0')
-    mgef_rec = record('MGEF', fear_effect_id, mgef)
-    # crYaoGuaiRoarFearSpell's shape with Target Actor delivery (3): Spell.Cast(player, npc) from script.
-    spel = field('EDID', zstring('AN76T_PanicFear'))
-    spel += field('OBND', bytes(12))
-    spel += field('SPIT', struct.pack('<IIIfIIfff', 0, 0, 0, 0.0, 1, 3, 0.0, 0.0, 0.0))
-    spel += field('EFID', struct.pack('<I', fear_effect_id))
-    spel += field('EFIT', struct.pack('<fII', 999.0, 0, 180))
-    spel_rec = record('SPEL', fear_spell_id, spel)
 
     aq = field('EDID', zstring('AN76T_Accident'))
     aq += field('VMAD', vmad('AN76Toilets:Accident', [
         ('Panicked', 1, struct.pack('<HhI', 0, 0, accident_id)),
-        ('PanicFear', 1, obj(fear_spell_id)),
-        ('PanicFearEffect', 1, obj(fear_effect_id))] + [
+        ] + [
         (n, 1, obj(ids['Sound_' + n])) for n in
         ('AccidentPoop', 'AccidentPee', 'Squelch')] + [
         (n + 'Lines', 11, topic_array(n)) for n in ('ScreamMale', 'ScreamFemale', 'GagMale', 'GagFemale')] + [
@@ -389,13 +365,14 @@ def build():
     aq += field('DNAM', bytes.fromhex('110064670000000000000000'))
     aq += field('NEXT', b'')
     # One reference collection, alias 0 "Panicked": empty until the script adds people; optional, may
-    # hold reserved references. It keeps the count; the fear spell does the running.
+    # hold reserved references; HoldPosition keeps them still while they cower.
     aq += field('ANAM', struct.pack('<I', 1))
     aq += field('ALCS', struct.pack('<I', 0))
     aq += field('ALMI', b'\x00')
     aq += field('ALST', struct.pack('<I', 0))
     aq += field('ALID', zstring('Panicked'))
     aq += field('FNAM', struct.pack('<I', 0x202))
+    aq += field('ALPC', struct.pack('<I', PANIC_HOLD_PACKAGE))
     aq += field('VTCK', struct.pack('<I', 0))
     aq += field('ALED', b'')
     quest_rec += record('QUST', accident_id, aq) + child_group(accident_id, 10, dialogue)
@@ -409,7 +386,7 @@ def build():
     header += field('MAST', zstring(MASTER))
     header += field('DATA', struct.pack('<Q', 0))
     body = (group('GLOB', glob) + group('SNDR', sndr) + group('ACTI', acti) + group('FURN', furn)
-            + group('FLST', flst_rec + an76_list) + group('MGEF', mgef_rec) + group('SPEL', spel_rec) + group('QUST', quest_rec))
+            + group('FLST', flst_rec + an76_list) + group('QUST', quest_rec))
     return record('TES4', 0, header, flags=TES4_LIGHT) + body, ids
 
 

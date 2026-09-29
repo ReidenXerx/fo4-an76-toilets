@@ -3,16 +3,13 @@ Scriptname AN76Toilets:Accident extends Quest
 
 Called by the sound watcher (AN76Toilets:Sounds) once the player has held AN76's need past the MCM limit.
 The need is cleared through AN76's own QuickRemoveNeed, so its timers, cooldown and "busy" state stay its
-own. The panic is an alias package: everyone nearby who is not a companion, not hostile, not fighting and
-not in a scene or talking to the player runs from the player for a while; then the package is taken away
-and they go back to whatever they were doing. Nothing on them is changed for good.}
+own. The panic: everyone nearby who is not a companion, not hostile, not fighting and not in a scene or
+talking to the player drops into vanilla's cower, screaming, held still by an alias package; then the
+package is taken away, they stand up and go back to whatever they were doing. Nothing on them is changed
+for good. (They do not run: FO4 cannot make a calm NPC flee without combat, measured 2026-09-29.)}
 
 RefCollectionAlias Property Panicked Auto Const Mandatory
-{The people running away: kept here to count them and to calm them down afterwards.}
-Spell Property PanicFear Auto Const Mandatory
-{The game's own fear (the Yao Guai roar's Demoralize), cast by the player: they flee from the player and
-come back to themselves when it is dispelled. Not hostile, so no crime and nobody turns on you.}
-MagicEffect Property PanicFearEffect Auto Const Mandatory
+{The people cowering: vanilla HoldPosition keeps them where they are while the cower plays.}
 
 Sound Property AccidentPoop Auto Const Mandatory
 Sound Property AccidentPee Auto Const Mandatory
@@ -49,6 +46,8 @@ Int Property AN76_BATHING_POTION = 0x03303C AutoReadOnly ; Potion Flashy_Hygiene
 ; Fallout4.esm
 Int Property KW_HUMAN = 0x02CB72 AutoReadOnly           ; Keyword ActorTypeHuman
 Int Property KW_GHOUL = 0x0EAFB7 AutoReadOnly           ; Keyword ActorTypeGhoul
+Int Property IDLE_COWER = 0x22C668 AutoReadOnly        ; Idle cowerStart (RaiderRootBehavior: humans)
+Int Property IDLE_STOP = 0x029380 AutoReadOnly         ; Idle LooseIdleStop
 Int Property FACE_AFRAID = 0x0FA84B AutoReadOnly        ; Keyword AnimFaceArchetypeAfraid
 Int Property FACE_DISGUST = 0x0C8674 AutoReadOnly       ; Keyword AnimFaceArchetypeDisgust
 Int Property FACE_IN_PAIN = 0x100286 AutoReadOnly       ; Keyword AnimFaceArchetypeInPain
@@ -218,7 +217,8 @@ Int Function PanicAmong(ObjectReference[] akRefs, Actor akPlayer)
 		If WillPanic(a, akPlayer)
 			Panicked.AddRef(a)
 			Face(a, FACE_AFRAID)
-			PanicFear.Cast(akPlayer, a)
+			a.EvaluatePackage(False)
+			Debug.Trace("AN76 Toilets: " + a + " cowers " + a.PlayIdle(Vanilla(IDLE_COWER) as Idle), 0)
 			If added < 6
 				Scream(a)
 				Utility.Wait(Utility.RandomFloat(0.05, 0.3))
@@ -270,7 +270,7 @@ Function LogPanic()
 	While i < Panicked.GetCount()
 		Actor a = Panicked.GetAt(i) as Actor
 		If a
-			Debug.Trace("AN76 Toilets: panic 3 s in - " + a + " afraid " + a.HasMagicEffect(PanicFearEffect) + ", in combat " + a.IsInCombat() + " (target " + a.GetCombatTarget() + "), package " + a.GetCurrentPackage() + ", " + (a.GetDistance(player) as Int) + " from the player", 0)
+			Debug.Trace("AN76 Toilets: panic 3 s in - " + a + " package " + a.GetCurrentPackage() + ", in combat " + a.IsInCombat() + ", " + (a.GetDistance(player) as Int) + " from the player", 0)
 		EndIf
 		i += 1
 	EndWhile
@@ -289,12 +289,7 @@ Function EndPanic()
 	Panicked.RemoveAll()
 	i = 0
 	While i < calm.Length
-		calm[i].DispelSpell(PanicFear)
-		; Fear flees through the combat AI: a bystander still set on the player after it lets go is ours
-		; to clear. Anyone they were really fighting is left alone.
-		If calm[i].GetCombatTarget() == Game.GetPlayer() && !calm[i].IsHostileToActor(Game.GetPlayer())
-			calm[i].StopCombat()
-		EndIf
+		calm[i].PlayIdle(Vanilla(IDLE_STOP) as Idle)
 		Face(calm[i], 0)
 		calm[i].EvaluatePackage(False)
 		i += 1
