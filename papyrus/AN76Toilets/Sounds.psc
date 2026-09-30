@@ -398,9 +398,11 @@ EndEvent
 Form[] Function WornNow(Actor akPlayer)
 	Form[] worn = new Form[0]
 	Int slot = 0
+	; Armour only: a slot can report the armour ADDON (the model piece, e.g. NakedHands), which is no
+	; inventory item -- GetItemCount on it logs an error every tick (log 2026-09-30).
 	While slot < 32
 		Actor:WornItem w = akPlayer.GetWornItem(slot, False)
-		If w && w.item && worn.Find(w.item) < 0 && akPlayer.GetItemCount(w.item) > 0
+		If w && (w.item as Armor) && worn.Find(w.item) < 0 && akPlayer.GetItemCount(w.item) > 0
 			worn.Add(w.item)
 		EndIf
 		slot += 1
