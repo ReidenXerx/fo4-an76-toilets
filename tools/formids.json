@@ -116,5 +116,17 @@
  "Topic_GagFemale4": "872",
  "Line_GagFemale4": "873",
  "Topic_GagFemale5": "874",
- "Line_GagFemale5": "875"
+ "Line_GagFemale5": "875",
+ "Sound_RumbleF": "876",
+ "Sound_FartShortF": "877",
+ "Sound_FartLongF": "878",
+ "Sound_FartWetF": "879",
+ "Sound_ExplosiveF": "87A",
+ "Sound_AccidentPoopF": "87B",
+ "Sound_AccidentPeeF": "87C",
+ "Sound_PeeSeat": "87D",
+ "Sound_PeeSeatF": "87E",
+ "Setting_NpcToiletsOn": "87F",
+ "Setting_NpcToiletChance": "880",
+ "NpcQuest": "881"
 }

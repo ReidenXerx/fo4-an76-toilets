@@ -81,15 +81,23 @@ def build():
         {'text': 'Sounds', 'type': 'section'},
         switcher('Bathroom sounds', 'Setting_SoundsOn',
                  'The stomach rumble when the need hits; straining, farts, plops and a sigh of relief '
-                 'while you go; zipper and stream at urinals. AN76\'s own sound switches also apply.'),
+                 'while you go; zipper and stream at urinals. Body sounds follow your sex. '
+                 'AN76\'s own sound switches also apply.'),
         {'text': 'World toilets', 'type': 'section'},
         switcher('Use the toilets already in the world', 'Setting_WorldToilets',
                  'Broken, vault and house toilets become seats, and men can use urinals. '
                  'AN76\'s own toilets always work.'),
+        {'text': 'NPCs on toilets', 'type': 'section'},
+        switcher('NPCs go too', 'Setting_NpcToiletsOn',
+                 'Anyone who sits down on a toilet in their own routine (a settler on a world toilet, the '
+                 "Institute's toilets, Far Harbor's outhouses, AN76's toilets) undresses, goes, sighs and "
+                 'dresses again, with the sounds of their own sex. Children keep their clothes on.'),
+        slider('NPC chance (%)', 'Setting_NpcToiletChance', 0.0, 100.0, 5.0,
+               'Chance each time an NPC sits on a toilet. The same NPC rests 8 game hours after. Default 100.'),
     ]
     debug = [
-        {'text': 'Try every part without waiting for it. Buttons that play out in the world wait until '
-                 'you close the menu.', 'type': 'text'},
+        {'text': 'For testing: try every part without waiting for it, or reproduce a bug for a report. '
+                 'Buttons that play out in the world wait until you close the menu.', 'type': 'text'},
         {'text': 'Status', 'type': 'section'},
         button('Show status', 'SoundsQuest', 'DebugStatus',
                "AN76's need and cooldown, the hold clock, the icon, the panic and the aftermath."),
@@ -121,7 +129,8 @@ def build():
         'minMcmVersion': 2,
         'pluginRequirements': [PLUGIN],
         'content': content,
-        'pages': [{'pageDisplayName': 'Debug', 'content': debug}],
+        # Owner 2026-09-30: ships, named Testing.
+        'pages': [{'pageDisplayName': 'Testing', 'content': debug}],
     }
 
 

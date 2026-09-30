@@ -12,6 +12,12 @@ Sound Property FartWet Auto Const Mandatory
 Sound Property Plop Auto Const Mandatory
 Sound Property Explosive Auto Const Mandatory
 Sound Property Paper Auto Const Mandatory
+Sound Property RumbleF Auto Const Mandatory
+Sound Property FartShortF Auto Const Mandatory
+Sound Property FartLongF Auto Const Mandatory
+Sound Property FartWetF Auto Const Mandatory
+Sound Property ExplosiveF Auto Const Mandatory
+{The body's sounds for a female player (owner 2026-09-30: every sound by sex). Plop and paper are the toilet's.}
 Topic[] Property StrainMaleLines Auto Const Mandatory
 Topic[] Property StrainFemaleLines Auto Const Mandatory
 Topic[] Property ReliefMaleLines Auto Const Mandatory
@@ -293,7 +299,7 @@ Event OnTimer(Int aiTimerID)
 		Debug.Trace("AN76 Toilets: AN76's bathroom pain started - you need to go", 0)
 		_painSince = Utility.GetCurrentRealTime()
 		If SoundsOn()
-			Rumble.Play(player)
+			Body(player, Rumble, RumbleF).Play(player)
 		EndIf
 		If !_urgent
 			_urgent = True
@@ -578,6 +584,14 @@ Bool Function Male(Actor akPlayer)
 	Return akPlayer.GetActorBase().GetSex() == 0
 EndFunction
 
+; The body's sound by the player's sex.
+Sound Function Body(Actor akPlayer, Sound akMale, Sound akFemale)
+	If Male(akPlayer)
+		Return akMale
+	EndIf
+	Return akFemale
+EndFunction
+
 Bool Function Sick(Actor akPlayer)
 	MagicEffect food = AN76(AN76_FOOD_ILL) as MagicEffect
 	MagicEffect rads = AN76(AN76_RAD_ILL) as MagicEffect
@@ -594,29 +608,29 @@ Function Going(Actor akPlayer)
 		; A pee gets a fart half the time and nothing else; straining waits until it is a poop.
 		Int roll = Utility.RandomInt(0, 3)
 		If roll == 0
-			FartShort.Play(akPlayer)
+			Body(akPlayer, FartShort, FartShortF).Play(akPlayer)
 		ElseIf roll == 1
-			FartLong.Play(akPlayer)
+			Body(akPlayer, FartLong, FartLongF).Play(akPlayer)
 		EndIf
 		_step = 2
 	ElseIf _step == 2 && t >= 11.0
 		; Still going past a pee's length: AN76 decided this one is a poop.
 		_pooping = True
 		If Sick(akPlayer)
-			Explosive.Play(akPlayer)
+			Body(akPlayer, Explosive, ExplosiveF).Play(akPlayer)
 		Else
 			Strain(akPlayer)
 		EndIf
 		_step = 3
 	ElseIf _step == 3 && t >= 14.0
-		FartWet.Play(akPlayer)
+		Body(akPlayer, FartWet, FartWetF).Play(akPlayer)
 		_step = 4
 	ElseIf _step == 4 && t >= 16.5
 		Plop.Play(akPlayer)
 		_step = 5
 	ElseIf _step == 5 && t >= 19.0
 		If Utility.RandomInt(0, 2) == 0
-			FartShort.Play(akPlayer)
+			Body(akPlayer, FartShort, FartShortF).Play(akPlayer)
 		Else
 			Plop.Play(akPlayer)
 		EndIf

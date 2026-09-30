@@ -51,7 +51,16 @@ SOUNDS = {
     'Paper': ['paper'], 'ZipDown': ['zip/down'], 'ZipUp': ['zip/up'], 'Stream': ['urinal'],
     # AccidentPoop: explosive diarrhea with long farts (owner 2026-09-29; the first clip did not fit).
     # The squelch that replaced the flies went too: the owner heard sex in it (recipe handed to anatomy).
-    'AccidentPoop': ['accident_poop'], 'AccidentPee': ['accident/accident_2'],
+    'AccidentPoop': ['accident_poop'], 'AccidentPee': ['accident/accident_2', 'accident_m'],
+    # Owner 2026-09-30: every body sound by sex. The sets above are the male ones; the female sets are
+    # ElevenLabs female clips (e*) plus the male originals pitched up about three semitones (p_*,
+    # x1.2, same length). Plop, paper
+    # and the zip are the toilet's and the trousers' sounds, not the body's: one set.
+    'RumbleF': ['rumble_f'], 'FartShortF': ['fart_short_f'], 'FartLongF': ['fart_long_f'],
+    'FartWetF': ['fart_wet_f'], 'ExplosiveF': ['explosive_f'],
+    'AccidentPoopF': ['accident_poop_f'], 'AccidentPeeF': ['accident_f'],
+    # NPCs on a toilet pee with their own stream (the player's is AN76's).
+    'PeeSeat': ['pee_seat'], 'PeeSeatF': ['pee_seat_f'],
 }
 SOUND_ROOT = pathlib.Path(__file__).resolve().parents[1] / 'sounds' / 'src'
 
@@ -79,12 +88,17 @@ VOICE = {
     'GagFemale': ('gag_f', 'npc-female', '*gags*', 'Ugh hhk bleh', FACE_DISGUST),
     'PukeMale': ('puke_m', 'npc-male', '*vomits*', VOWEL_RUN, FACE_DISGUST),
     'PukeFemale': ('puke_f', 'npc-female', '*vomits*', VOWEL_RUN, FACE_DISGUST),
-    'StrainMale': ('strain_m', 'player-male', 'Nnnngh!', VOWEL_RUN, FACE_IN_PAIN),
-    'StrainFemale': ('strain_f', 'player-female', 'Nnnngh!', VOWEL_RUN, FACE_IN_PAIN),
-    'ReliefMale': ('relief_m', 'player-male', 'Ahhhh...', VOWEL_RUN, FACE_RELIEVED),
-    'ReliefFemale': ('relief_f', 'player-female', 'Ahhhh...', VOWEL_RUN, FACE_RELIEVED),
+    # The player's, and since 2026-09-30 every NPC's too (NPCs going on a toilet).
+    'StrainMale': ('strain_m', 'all-male', 'Nnnngh!', VOWEL_RUN, FACE_IN_PAIN),
+    'StrainFemale': ('strain_f', 'all-female', 'Nnnngh!', VOWEL_RUN, FACE_IN_PAIN),
+    'ReliefMale': ('relief_m', 'all-male', 'Ahhhh...', VOWEL_RUN, FACE_RELIEVED),
+    'ReliefFemale': ('relief_f', 'all-female', 'Ahhhh...', VOWEL_RUN, FACE_RELIEVED),
 }
 PLAYER_VOICE_TYPES = {'player-male': ['PlayerVoiceMale01'], 'player-female': ['PlayerVoiceFemale01']}
+
+# Toilets an NPC can sit on, from our plugin and Fallout4.esm (the DLC and AN76 ones: by form id at run
+# time). Measured 2026-09-30: the only sittable toilet FURN in the base game is the Institute's.
+NPC_TOILETS_VANILLA = [0x10C853]   # NpcChairInstituteToiletSit01, 17 placed
 
 
 def voice_clips(name):
@@ -95,7 +109,11 @@ def voice_types(speaker):
     if speaker in PLAYER_VOICE_TYPES:
         return PLAYER_VOICE_TYPES[speaker]
     table = json.loads((pathlib.Path(__file__).resolve().parent / 'voicetypes.json').read_text())
-    return table['male' if speaker == 'npc-male' else 'female']
+    sex = speaker.split('-')[1]
+    npc = table['male' if sex == 'male' else 'female']
+    if speaker.startswith('all-'):
+        return PLAYER_VOICE_TYPES['player-' + sex] + npc
+    return npc
 
 
 def voice_lines(ids):
@@ -121,6 +139,7 @@ SETTINGS = [
     ('IconNudgeX', 0.0), ('IconNudgeY', 0.0),
     ('AccidentsOn', 1.0), ('OrangeHours', 2.0), ('AccidentHours', 4.0),
     ('PanicOn', 1.0), ('PanicSeconds', 60.0), ('AftermathOn', 1.0),
+    ('NpcToiletsOn', 1.0), ('NpcToiletChance', 100.0),
 ]
 
 # The panic. Measured 2026-09-29, one test each in Diamond City: FO4 has no way to make a CALM NPC run.
@@ -343,7 +362,8 @@ def build():
     sq = field('EDID', zstring('AN76T_Sounds'))
     sq += field('VMAD', vmad('AN76Toilets:Sounds', [
         (n, 1, obj(ids['Sound_' + n])) for n in
-        ('Rumble', 'FartShort', 'FartLong', 'FartWet', 'Plop', 'Explosive', 'Paper')] + [
+        ('Rumble', 'FartShort', 'FartLong', 'FartWet', 'Plop', 'Explosive', 'Paper',
+         'RumbleF', 'FartShortF', 'FartLongF', 'FartWetF', 'ExplosiveF')] + [
         (n + 'Lines', 11, topic_array(n)) for n in ('StrainMale', 'StrainFemale', 'ReliefMale', 'ReliefFemale')] + [
         ('IconOn', 1, obj(ids['Setting_IconOn'])), ('IconX', 1, obj(ids['Setting_IconX'])),
         ('IconNudgeX', 1, obj(ids['Setting_IconNudgeX'])), ('IconNudgeY', 1, obj(ids['Setting_IconNudgeY'])),
@@ -363,7 +383,8 @@ def build():
         ('Panicked', 1, struct.pack('<HhI', 0, 0, accident_id)),
         ] + [
         (n, 1, obj(ids['Sound_' + n])) for n in
-        ('AccidentPoop', 'AccidentPee', 'FartShort', 'FartWet')] + [
+        ('AccidentPoop', 'AccidentPee', 'FartShort', 'FartWet',
+         'AccidentPoopF', 'AccidentPeeF', 'FartShortF', 'FartWetF')] + [
         (n + 'Lines', 11, topic_array(n)) for n in
         ('ScreamMale', 'ScreamFemale', 'GagMale', 'GagFemale', 'PukeMale', 'PukeFemale')] + [
         (n, 1, obj(ids['Setting_' + n])) for n in ('PanicOn', 'PanicSeconds', 'AftermathOn')]))
@@ -381,6 +402,23 @@ def build():
     aq += field('VTCK', struct.pack('<I', 0))
     aq += field('ALED', b'')
     quest_rec += record('QUST', accident_id, aq) + child_group(accident_id, 10, dialogue)
+
+    # NPCs going on a toilet (2026-09-30): its own quest, so a show's waits never hold up the others.
+    npc_quest_id = new_id('NpcQuest')
+    toilets = [ids['Seat_' + k] for k, *_ in SEATS] + NPC_TOILETS_VANILLA
+    nq = field('EDID', zstring('AN76T_NpcToilets'))
+    nq += field('VMAD', vmad('AN76Toilets:NpcToilets', [
+        (n, 1, obj(ids['Sound_' + n])) for n in
+        ('FartShort', 'FartShortF', 'FartLong', 'FartLongF', 'FartWet', 'FartWetF',
+         'PeeSeat', 'PeeSeatF', 'Plop', 'Paper')] + [
+        (n + 'Lines', 11, topic_array(n)) for n in ('StrainMale', 'StrainFemale', 'ReliefMale', 'ReliefFemale')] + [
+        ('Toilets', 11, struct.pack('<I', len(toilets)) + b''.join(obj(t) for t in toilets)),
+        ('NpcToiletsOn', 1, obj(ids['Setting_NpcToiletsOn'])),
+        ('NpcToiletChance', 1, obj(ids['Setting_NpcToiletChance'])),
+        ('SoundsSetting', 1, obj(ids['Setting_SoundsOn']))]))
+    nq += field('DNAM', bytes.fromhex('110064670000000000000000'))
+    nq += field('NEXT', b'')
+    quest_rec += record('QUST', npc_quest_id, nq)
 
     for fid in ids.values():
         if not 0x800 <= (fid & 0xFFFFFF) <= 0xFFF:

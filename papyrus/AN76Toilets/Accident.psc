@@ -25,6 +25,11 @@ Topic[] Property PukeFemaleLines Auto Const Mandatory
 Sound Property FartShort Auto Const Mandatory
 Sound Property FartWet Auto Const Mandatory
 {Aftershocks while the soiled player walks. (Owner 2026-09-29: flies out; the squelch sounded like sex.)}
+Sound Property AccidentPoopF Auto Const Mandatory
+Sound Property AccidentPeeF Auto Const Mandatory
+Sound Property FartShortF Auto Const Mandatory
+Sound Property FartWetF Auto Const Mandatory
+{The same for a female player (owner 2026-09-30: every body sound by sex).}
 Int Property PukePercent = 30 Auto Const
 {Chance that the one gagging near a soiled player throws up instead.}
 
@@ -131,6 +136,14 @@ Function Face(Actor akActor, Int aiFace)
 	EndIf
 EndFunction
 
+; The body's sound by the player's sex.
+Sound Function Body(Actor akPlayer, Sound akMale, Sound akFemale)
+	If akPlayer.GetActorBase().GetSex() == 1
+		Return akFemale
+	EndIf
+	Return akMale
+EndFunction
+
 ; ---- the accident --------------------------------------------------------------------------
 
 ; abPoop: which one it was. abSounds: the sound watcher's verdict on the MCM and AN76's sound switches.
@@ -158,9 +171,9 @@ Function Trigger(Bool abPoop, Bool abSounds)
 	Face(player, FACE_IN_PAIN)
 	If abSounds
 		If abPoop
-			AccidentPoop.Play(player)
+			Body(player, AccidentPoop, AccidentPoopF).Play(player)
 		Else
-			AccidentPee.Play(player)
+			Body(player, AccidentPee, AccidentPeeF).Play(player)
 		EndIf
 	EndIf
 	If abPoop
@@ -382,9 +395,9 @@ Function Stink()
 		_lastY = player.GetPositionY()
 		If _sounds && moved > 120.0 && moved < 3000.0 && Utility.RandomInt(0, 2) == 0
 			If Utility.RandomInt(0, 1) == 0
-				FartShort.Play(player)
+				Body(player, FartShort, FartShortF).Play(player)
 			Else
-				FartWet.Play(player)
+				Body(player, FartWet, FartWetF).Play(player)
 			EndIf
 		EndIf
 		Actor near = None
