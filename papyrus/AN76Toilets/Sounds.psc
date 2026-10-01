@@ -86,6 +86,9 @@ Bool _painTaken = False     ; we took AN76's pain away (accidents on)
 Float _heldHours = 0.0      ; game hours held, sleep left out
 Float _lastTick = 0.0       ; game days
 Bool _sleeping = False
+Bool _waiting = False       ; in the Wait menu: counted in full when it ends
+Float _waitFrom = 0.0       ; game days
+Float _lastReal = 0.0       ; real seconds at the last hold tick
 Form[] _worn               ; what the player wore while the need was pending, to put back after
 Float _redressCheckAt = 0.0 ; real time: when to look for clothes AN76 did not put back (0 = no check due)
 Bool _debugAccident = False  ; set by the MCM's Debug page, acted on once the menu is closed
@@ -103,7 +106,9 @@ Event Actor.OnPlayerLoadGame(Actor akSender)
 	; Real time starts over with the game and a sleep a save caught never sends its Stop: nothing saved
 	; from those may carry over.
 	_sleeping = False
+	_waiting = False
 	_lastTick = Utility.GetCurrentGameTime()
+	_lastReal = Utility.GetCurrentRealTime()
 	_redressCheckAt = 0.0
 	If _hadPain
 		_painSince = Utility.GetCurrentRealTime()
@@ -131,6 +136,7 @@ EndFunction
 Function Begin()
 	RegisterForRemoteEvent(Game.GetPlayer(), "OnPlayerLoadGame")
 	RegisterForPlayerSleep()
+	RegisterForPlayerWait()
 	SetupWidget()
 	StartTimer(WatchSeconds, WATCH_TIMER)
 EndFunction
@@ -433,15 +439,58 @@ EndFunction
 
 ; ---- holding it ----------------------------------------------------------------------------
 
-; Game hours the player has been holding it, sleep left out: the clock stops at bedtime and runs again
-; on waking (owner, 2026-09-29: a 12-hour sleep must not end in an accident). Waiting and fast travel count.
+; Game hours the player has been holding it. Sleep is left out: the clock stops at bedtime and runs again
+; on waking (owner, 2026-09-29: a 12-hour sleep must not end in an accident). Fast travel is left out too
+; (a tester, 2026-10-01: fast travelled and soiled himself): FO4 has no fast-travel event, so outside the
+; Wait menu the clock takes at most what real time allows at the game's time scale -- a fast travel jumps
+; hours in a few seconds and only those seconds count. Waiting counts in full (OnPlayerWaitStop).
 Function Hold()
 	Float now = Utility.GetCurrentGameTime()
-	If !_sleeping && _lastTick > 0.0 && now > _lastTick
-		_heldHours += (now - _lastTick) * 24.0
+	Float real = Utility.GetCurrentRealTime()
+	If !_sleeping && !_waiting && _lastTick > 0.0 && now > _lastTick
+		Float hours = (now - _lastTick) * 24.0
+		If _lastReal > 0.0 && real > _lastReal
+			Float pace = (real - _lastReal) * TimeScale() / 3600.0 * 1.5 + 0.05
+			If hours > pace
+				If hours - pace > 0.5
+					Debug.Trace("AN76 Toilets: " + hours + " game hours went by in " + ((real - _lastReal) as Int) + " s outside sleep and the Wait menu (fast travel) - the hold clock takes " + pace, 0)
+				EndIf
+				hours = pace
+			EndIf
+		EndIf
+		_heldHours += hours
 	EndIf
 	_lastTick = now
+	_lastReal = real
 EndFunction
+
+; Fallout4.esm TimeScale (game seconds per real second, 20 by default).
+Float Function TimeScale()
+	GlobalVariable g = Game.GetFormFromFile(0x00003A, "Fallout4.esm") as GlobalVariable
+	If g && g.GetValue() > 0.0
+		Return g.GetValue()
+	EndIf
+	Return 20.0
+EndFunction
+
+Event OnPlayerWaitStart(Float afWaitStartTime, Float afDesiredWaitEndTime)
+	If _urgent
+		Hold()
+	EndIf
+	_waiting = True
+	_waitFrom = Utility.GetCurrentGameTime()
+EndEvent
+
+Event OnPlayerWaitStop(Bool abInterrupted)
+	Float now = Utility.GetCurrentGameTime()
+	If _waiting && _urgent && now > _waitFrom
+		_heldHours += (now - _waitFrom) * 24.0
+		Debug.Trace("AN76 Toilets: waited " + ((now - _waitFrom) * 24.0) + " game hours - all of it counts, " + _heldHours + " held", 0)
+	EndIf
+	_waiting = False
+	_lastTick = now
+	_lastReal = Utility.GetCurrentRealTime()
+EndEvent
 
 Event OnPlayerSleepStart(Float afSleepStartTime, Float afDesiredSleepEndTime, ObjectReference akBed)
 	If _urgent
@@ -454,6 +503,7 @@ EndEvent
 Event OnPlayerSleepStop(Bool abInterrupted, ObjectReference akBed)
 	_sleeping = False
 	_lastTick = Utility.GetCurrentGameTime()
+	_lastReal = Utility.GetCurrentRealTime()
 	If _urgent
 		Debug.Trace("AN76 Toilets: awake - the hold clock runs again from " + _heldHours + " game hours", 0)
 	EndIf
