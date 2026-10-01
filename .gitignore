@@ -19,3 +19,4 @@ docs/ARCHITECTURE.gitnexus.md
 .claude/skills/*
 !.claude/skills/gitnexus-area-*/
 # --- end bearing ---
+build/dist/

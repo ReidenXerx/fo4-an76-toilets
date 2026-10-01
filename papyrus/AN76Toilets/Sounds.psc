@@ -138,7 +138,29 @@ Function Begin()
 	RegisterForPlayerSleep()
 	RegisterForPlayerWait()
 	SetupWidget()
+	CheckSetup()
 	StartTimer(WatchSeconds, WATCH_TIMER)
+EndFunction
+
+; What the installer cannot see, said in game once per save (nexus-tools FOMOD-STANDARD rule 3): F4SE runs the
+; clothes safety net and ends a conversation on an accident; MCM holds the settings.
+Bool _toldF4SE = False
+Bool _toldMCM = False
+Function CheckSetup()
+	Bool hasF4SE = F4SE.GetVersionRelease() > 0
+	If !hasF4SE
+		Debug.Trace("AN76 Toilets: F4SE is not running - clothes are not put back and accidents do not end conversations", 0)
+		If !_toldF4SE
+			_toldF4SE = True
+			Debug.MessageBox("AN76 Toilets needs F4SE (f4se.silverlock.org). Without it, clothes AN76 leaves off are not put back and an accident does not end a conversation. Everything else works.")
+		EndIf
+	ElseIf F4SE.GetPluginVersion("F4MCM") <= 0
+		Debug.Trace("AN76 Toilets: MCM is not installed - the settings keep their defaults", 0)
+		If !_toldMCM
+			_toldMCM = True
+			Debug.MessageBox("AN76 Toilets: Mod Configuration Menu (MCM, Nexus 21497) is not installed, so its settings keep their defaults. Everything works.")
+		EndIf
+	EndIf
 EndFunction
 
 ; ---- the HUD icon --------------------------------------------------------------------------
