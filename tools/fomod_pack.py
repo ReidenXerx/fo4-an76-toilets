@@ -33,11 +33,11 @@ FEATURES = [
      'pants where you stand. Sleep and fast travel do not count; waiting does.\n'
      'Everyone within 25 m screams and cowers, then goes back to what they were doing. An accident mid-conversation '
      'ends the conversation. Afterwards you stink until you wash: gnats, aftershock farts, people gag or throw up.'),
-    ('NPCs use toilets too', 'npc-toilets.png',
+    ('NPCs use toilets too', 'npcs-use-toilets.png',
      'Anyone who sits down on a toilet in their own routine -- a settler on a world toilet, the Institute\'s '
      'toilets, Far Harbor\'s outhouses, AN76\'s built toilets -- undresses, goes, sighs and dresses again, with the '
      'sounds of their own sex. Children keep their clothes on. A switch and a chance in MCM.'),
-    ('Voices and sounds', 'voices.png',
+    ('Voices and sounds', 'voices-and-sounds.png',
      'Straining, farts, plops, a sigh of relief and the toilet paper while you go; a stomach rumble when the need '
      'hits. Body sounds in male and female sets. Screams, gags, puking, straining and relief are spoken lines with '
      'lip sync in every vanilla human and ghoul voice type: 8,110 voice files.'),
