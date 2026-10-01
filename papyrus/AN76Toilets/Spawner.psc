@@ -170,7 +170,9 @@ Function Tick()
 	Int i = 0
 	While i < found.Length && _spawned.Length < MaxSpawns
 		ObjectReference target = found[i]
-		If target && !target.IsDisabled() && _for.Find(target) < 0 && Upright(target)
+		; Not a toilet shrunk to nothing: a mod hides a leftover that way (a tester, 2026-10-01: the Underground
+		; Hideout's "TOILET" floated mid-floor, the poop landed there, the real toilet stood by the wall).
+		If target && !target.IsDisabled() && _for.Find(target) < 0 && Upright(target) && target.GetScale() >= 0.5
 			Int index = Targets.Find(target.GetBaseObject())
 			If index >= 0
 				Form spawn = Spawns[index]
