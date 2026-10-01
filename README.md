@@ -35,7 +35,7 @@ on the HUD, accidents when you hold it too long, usable world toilets and urinal
 - **F4SE**: the clothes safety net and ending a conversation use it. Missing, the add-on says so in game.
 - **MCM** (Nexus 21497) for the settings; without it they keep their defaults.
 
-Fallout 4 1.10.163 and the Anniversary Edition 1.11.x. Install with Vortex or Mod Organizer 2; the installer checks
+Fallout 4 1.10.163, next-gen 1.10.984 and the Anniversary Edition 1.11.x (pure Papyrus with F4SE script functions). Install with Vortex or Mod Organizer 2; the installer checks
 the requirements. Manual installs are not supported.
 
 ## Known
