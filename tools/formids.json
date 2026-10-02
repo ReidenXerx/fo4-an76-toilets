@@ -138,5 +138,6 @@
  "Setting_WorldKitchens": "888",
  "Setting_LeftoversOn": "889",
  "Setting_PlayerReliefChance": "88A",
- "Setting_PlayerStrainChance": "88B"
+ "Setting_PlayerStrainChance": "88B",
+ "Setting_CoffeeHours": "88C"
 }

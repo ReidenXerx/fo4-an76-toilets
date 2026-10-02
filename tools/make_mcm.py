@@ -102,6 +102,9 @@ def build():
                  "The dead kitchen stoves prep food like AN76's Prep Stove: all your raw meat and produce "
                  "become AN76's prepped meat and vegetables. The espresso machines brew AN76's Silt Bean "
                  'coffee, drunk standing at the machine. Needs only AN76, not its Bathroom Needs.'),
+        slider('Coffee keeps you awake (hours)', 'Setting_CoffeeHours', 2.0, 12.0, 1.0,
+               "A coffee or any caffeinated drink while tired keeps the tiredness away this many game hours. "
+               "AN76 has it fixed at 2 and no setting; 2 here leaves AN76's alone. Default 6."),
         {'text': 'NPCs on toilets', 'type': 'section'},
         switcher('NPCs go too', 'Setting_NpcToiletsOn',
                  'Anyone who sits down on a toilet in their own routine (a settler on a world toilet, the '

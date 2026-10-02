@@ -4,6 +4,8 @@
 
 - Calmer needs (owner): once per save, AN76's timers are set to hungry after 10 game hours (AN76: 6), thirsty after 7 (AN76: 4), and the bathroom need 1 to 5 hours after a meal (AN76: up to 3). Saves from before get it once too; anything changed in AN76's MCM afterwards stays.
 - Holding it: orange at 3 game hours, the accident at 6 (was 2 and 4). Both MCM sliders.
+- Coffee lasts (a tester: "every coffee lasts two hours"): a coffee or any caffeinated drink while tired keeps the
+  tiredness away 6 game hours instead of AN76's fixed 2. An MCM slider, 2 to 12; 2 leaves AN76's alone.
 
 ## 1.1.1 (2026-10-02)
 

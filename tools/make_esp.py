@@ -142,6 +142,7 @@ SETTINGS = [
     ('NpcToiletsOn', 1.0), ('NpcToiletChance', 100.0),
     ('WorldKitchens', 1.0), ('LeftoversOn', 1.0),
     ('PlayerReliefChance', 0.4), ('PlayerStrainChance', 10.0),
+    ('CoffeeHours', 6.0),
 ]
 
 # The panic. Measured 2026-09-29, one test each in Diamond City: FO4 has no way to make a CALM NPC run.
@@ -454,7 +455,8 @@ def build():
         ('OrangeHours', 1, obj(ids['Setting_OrangeHours'])),
         ('AccidentHours', 1, obj(ids['Setting_AccidentHours'])),
         ('PlayerReliefChance', 1, obj(ids['Setting_PlayerReliefChance'])),
-        ('PlayerStrainChance', 1, obj(ids['Setting_PlayerStrainChance']))]))
+        ('PlayerStrainChance', 1, obj(ids['Setting_PlayerStrainChance'])),
+        ('CoffeeHours', 1, obj(ids['Setting_CoffeeHours']))]))
     sq += field('DNAM', bytes.fromhex('110064670000000000000000'))
     sq += field('NEXT', b'')
     quest_rec += record('QUST', sounds_quest_id, sq)

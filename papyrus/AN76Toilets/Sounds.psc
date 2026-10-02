@@ -18,6 +18,10 @@ Sound Property FartLongF Auto Const Mandatory
 Sound Property FartWetF Auto Const Mandatory
 Sound Property ExplosiveF Auto Const Mandatory
 {The body's sounds for a female player (owner 2026-09-30: every sound by sex). Plop and paper are the toilet's.}
+GlobalVariable Property CoffeeHours Auto Const Mandatory
+{MCM (tester alasdairn 2026-10-02: "every coffee lasts two hours"): how long a caffeinated drink keeps tiredness
+away. AN76 hard-codes 2 game hours (Flashy_NeedsMainScript, sleep timer 50, no setting); right after AN76
+resets it, we start the same timer again with this many hours.}
 GlobalVariable Property PlayerReliefChance Auto Const Mandatory
 GlobalVariable Property PlayerStrainChance Auto Const Mandatory
 {MCM, percent (tester alasdairn 2026-10-02, owner OK: "funny the first time, after the eighth just an
@@ -65,6 +69,11 @@ Int Property AN76_NEXT_PISS = 0x04E8FE AutoReadOnly        ; ActorValue Flashy_N
 Int Property AN76_BUSY = 0x03B904 AutoReadOnly             ; Keyword Flashy_Keyword_BusyPlayer
 Int Property AN76_PAIN = 0x03B90C AutoReadOnly             ; MagicEffect Flashy_ME_BathroomPains
 Int Property AN76_PLAY_SOUNDS = 0x03FD6A AutoReadOnly      ; GlobalVariable Flashy_Hygiene_PlaySounds
+Int Property AN76_SLEEP_STACK = 0x001F0A AutoReadOnly     ; GlobalVariable Flashy_NeedsStackSleep (tiredness)
+Int Property AN76_NEEDS_QUEST = 0x001EDD AutoReadOnly     ; Quest Flashy_NeedsMain (Flashy_NeedsMainScript)
+Int Property AN76_SLEEP_TIMER = 50 AutoReadOnly           ; that script's game-time timer id for tiredness
+Int Property KW_CAFFEINATED = 0x249F31 AutoReadOnly       ; Fallout4.esm Keyword ObjectTypeCaffeinated
+Int Property KW_EXTRA_CAFFEINATED = 0x249F9D AutoReadOnly ; Fallout4.esm Keyword ObjectTypeExtraCaffeinated
 Int Property AN76_SILENT = 0x023D43 AutoReadOnly           ; GlobalVariable Flashy_NeedsHygieneSilentPoop
 Int Property AN76_FOOD_ILL = 0x001F34 AutoReadOnly         ; MagicEffect Flashy_ME_FoodPoisonIllness
 Int Property AN76_RAD_ILL = 0x001F32 AutoReadOnly          ; MagicEffect Flashy_ME_RadPoisonIllness
@@ -89,6 +98,7 @@ Bool _urgent = False        ; AN76's need has hit (its pain fired) and has not b
 Bool _painTaken = False     ; we took AN76's pain away (accidents on)
 Float _heldHours = 0.0      ; game hours held, sleep left out
 Float _lastTick = 0.0       ; game days
+Int _sleepStack = 0          ; AN76's tiredness at the last watch tick (coffee only acts when there was some)
 Bool _sleeping = False
 Bool _waiting = False       ; in the Wait menu: counted in full when it ends
 Float _waitFrom = 0.0       ; game days
@@ -137,8 +147,50 @@ Function Status()
 	Debug.Trace("AN76 Toilets: loaded - " + need + ", pain " + (pain && Game.GetPlayer().HasMagicEffect(pain)) + ", holding " + _urgent + " (" + _heldHours + " game hours), " + icon + ", icon stage " + _stage + ", " + Cooldown(), 0)
 EndFunction
 
+; ---- coffee (1.2.0) ------------------------------------------------------------------------------
+
+; A caffeinated drink while tired: AN76 clears the tiredness and restarts its sleep timer at 2 game hours.
+; Once it has (the tiredness reads 0), the same timer again with the MCM's hours. Not tired: AN76 leaves its
+; timer alone, and so do we -- a full night's timer must never be cut short.
+Event Actor.OnItemEquipped(Actor akSender, Form akBaseObject, ObjectReference akReference)
+	If !(akBaseObject as Potion) || _sleepStack <= 0
+		Return
+	EndIf
+	If !akBaseObject.HasKeyword(Game.GetFormFromFile(KW_CAFFEINATED, "Fallout4.esm") as Keyword) && !akBaseObject.HasKeyword(Game.GetFormFromFile(KW_EXTRA_CAFFEINATED, "Fallout4.esm") as Keyword)
+		Return
+	EndIf
+	Float hours = CoffeeHours.GetValue()
+	If hours <= 2.0
+		Return   ; AN76's own 2 hours
+	EndIf
+	GlobalVariable sleepStack = AN76(AN76_SLEEP_STACK) as GlobalVariable
+	Quest needs = AN76(AN76_NEEDS_QUEST) as Quest
+	ScriptObject main = None
+	If needs
+		main = needs.CastAs("FlashyEssentials:Flashy_NeedsMainScript")
+	EndIf
+	; Give AN76's own handler time to reset the tiredness and start its 2 hours first.
+	Int tries = 0
+	While tries < 10 && sleepStack && sleepStack.GetValueInt() > 0
+		Utility.Wait(0.3)
+		tries += 1
+	EndWhile
+	Utility.Wait(0.5)
+	If main && sleepStack && sleepStack.GetValueInt() == 0
+		Var[] args = new Var[2]
+		args[0] = hours
+		args[1] = AN76_SLEEP_TIMER
+		main.CallFunction("StartTimerGameTime", args)
+		_sleepStack = 0
+		Debug.Trace("AN76 Toilets: " + akBaseObject + " - AN76's sleep timer set to " + hours + " game hours (AN76: 2)", 0)
+	Else
+		Debug.Trace("AN76 Toilets: " + akBaseObject + " - AN76 did not reset the tiredness (needs script " + (main != None) + "), its timer left alone", 0)
+	EndIf
+EndEvent
+
 Function Begin()
 	RegisterForRemoteEvent(Game.GetPlayer(), "OnPlayerLoadGame")
+	RegisterForRemoteEvent(Game.GetPlayer(), "OnItemEquipped")
 	RegisterForPlayerSleep()
 	RegisterForPlayerWait()
 	SetupWidget()
@@ -311,6 +363,10 @@ Event OnTimer(Int aiTimerID)
 		Return
 	EndIf
 
+	GlobalVariable sleepStack = AN76(AN76_SLEEP_STACK) as GlobalVariable
+	If sleepStack
+		_sleepStack = sleepStack.GetValueInt()
+	EndIf
 	GlobalVariable stack = AN76(AN76_TOILET_STACK) as GlobalVariable
 	If _debugAccident
 		_debugAccident = False

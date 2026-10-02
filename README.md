@@ -32,7 +32,8 @@ on the HUD, accidents when you hold it too long, usable world toilets and urinal
   that does not flush, and now and then a magazine. Everything cleans itself up when you leave the area.
 - **Calmer needs.** Once per save it sets AN76's own timers: hungry after 10 game hours (AN76: 6), thirsty
   after 7 (AN76: 4), and the bathroom need 1 to 5 hours after a meal (AN76: up to 3). Change any of them in AN76's
-  MCM afterwards and that stays.
+  MCM afterwards and that stays. A coffee or any caffeinated drink keeps tiredness away 6 game hours (AN76: a fixed
+  2), an MCM slider.
 - **MCM** for every part, and a **Testing** page to try each one without waiting.
 
 ## Requirements
