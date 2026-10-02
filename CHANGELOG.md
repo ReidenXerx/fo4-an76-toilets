@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.1 (2026-10-02)
+
+- The player's voice only now and then (a tester: "funny the first time, after the eighth just an annoyance"): the relief line about one visit in 250, the straining one poop in 10. Both are MCM sliders under Sounds; NPCs keep theirs.
+
 ## 1.1.0 (2026-10-02)
 
 - World kitchens: the dead kitchen stoves (6 kinds, placed 355 times) prep food like AN76's Prep Stove, and the

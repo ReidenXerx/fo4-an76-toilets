@@ -18,6 +18,10 @@ Sound Property FartLongF Auto Const Mandatory
 Sound Property FartWetF Auto Const Mandatory
 Sound Property ExplosiveF Auto Const Mandatory
 {The body's sounds for a female player (owner 2026-09-30: every sound by sex). Plop and paper are the toilet's.}
+GlobalVariable Property PlayerReliefChance Auto Const Mandatory
+GlobalVariable Property PlayerStrainChance Auto Const Mandatory
+{MCM, percent (tester alasdairn 2026-10-02, owner OK: "funny the first time, after the eighth just an
+annoyance"): the player's relief line about 1 visit in 250, the straining 1 poop in 10.}
 Topic[] Property StrainMaleLines Auto Const Mandatory
 Topic[] Property StrainFemaleLines Auto Const Mandatory
 Topic[] Property ReliefMaleLines Auto Const Mandatory
@@ -314,7 +318,7 @@ Event OnTimer(Int aiTimerID)
 	EndIf
 	If _debugVoice
 		_debugVoice = False
-		Strain(player)
+		Strain(player, True)
 		Utility.Wait(3.0)
 		If Male(player)
 			Speak(player, ReliefMaleLines)
@@ -716,7 +720,15 @@ Function Speak(Actor akSpeaker, Topic[] akLines)
 	akSpeaker.Say(akLines[Utility.RandomInt(0, akLines.Length - 1)], None, False, None)
 EndFunction
 
-Function Strain(Actor akPlayer)
+; The player's voice only now and then (the MCM chances); abAlways for the Testing page.
+Bool Function Rolled(GlobalVariable akChance)
+	Return Utility.RandomFloat(0.0, 100.0) < akChance.GetValue()
+EndFunction
+
+Function Strain(Actor akPlayer, Bool abAlways = False)
+	If !abAlways && !Rolled(PlayerStrainChance)
+		Return
+	EndIf
 	If Male(akPlayer)
 		Speak(akPlayer, StrainMaleLines)
 	Else
@@ -728,10 +740,12 @@ Function Finished(Actor akPlayer)
 	If !SoundsOn()
 		Return
 	EndIf
-	If Male(akPlayer)
-		Speak(akPlayer, ReliefMaleLines)
-	Else
-		Speak(akPlayer, ReliefFemaleLines)
+	If Rolled(PlayerReliefChance)
+		If Male(akPlayer)
+			Speak(akPlayer, ReliefMaleLines)
+		Else
+			Speak(akPlayer, ReliefFemaleLines)
+		EndIf
 	EndIf
 	If _pooping
 		Utility.Wait(1.5)

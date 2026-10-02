@@ -88,6 +88,11 @@ def build():
                  'The stomach rumble when the need hits; straining, farts, plops and a sigh of relief '
                  'while you go; zipper and stream at urinals. Body sounds follow your sex. '
                  'AN76\'s own sound switches also apply.'),
+        slider("Player's relief line (%)", 'Setting_PlayerReliefChance', 0.0, 100.0, 0.1,
+               'Chance that you sigh out loud after going. Default 0.4: about one visit in 250, so it stays '
+               'funny.'),
+        slider("Player's straining (%)", 'Setting_PlayerStrainChance', 0.0, 100.0, 1.0,
+               'Chance that you strain out loud during a poop. Default 10. The body sounds are not affected.'),
         {'text': 'World toilets', 'type': 'section'},
         switcher('Use the toilets already in the world', 'Setting_WorldToilets',
                  'Broken, vault and house toilets become seats, and men can use urinals. '
