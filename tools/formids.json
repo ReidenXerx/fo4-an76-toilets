@@ -128,5 +128,13 @@
  "Sound_PeeSeatF": "87E",
  "Setting_NpcToiletsOn": "87F",
  "Setting_NpcToiletChance": "880",
- "NpcQuest": "881"
+ "NpcQuest": "881",
+ "Stove_Ruin": "882",
+ "Stove_House": "883",
+ "Coffee_Espresso": "884",
+ "PeeTexture": "885",
+ "PeeImpact": "886",
+ "PeeImpactSet": "887",
+ "Setting_WorldKitchens": "888",
+ "Setting_LeftoversOn": "889"
 }

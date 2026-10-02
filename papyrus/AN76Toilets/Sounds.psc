@@ -558,7 +558,7 @@ Function HadAccident(Actor akPlayer)
 	_urgent = False
 	_painTaken = False
 	_heldHours = 0.0
-	Accident.Trigger(poop, SoundsOn())
+	Accident.Trigger(poop, SoundsOn(), Sick(akPlayer))
 EndFunction
 
 ; ---- debug: the MCM's Debug page -------------------------------------------------------------

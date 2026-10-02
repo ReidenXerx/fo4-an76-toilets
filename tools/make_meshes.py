@@ -28,6 +28,10 @@ MODELS = {
     r'meshes\setdressing\building\stalls\brstallurinal01.nif': 'StallUrinal01.nif',
     r'meshes\setdressing\building\stalls\brstallurinal02.nif': 'StallUrinal02.nif',
     r'meshes\setdressing\building\stalls\brstallurinal03.nif': 'StallUrinal03.nif',
+    # World kitchens (2026-10-02): the dead stoves prep food, the espresso machines brew coffee.
+    r'meshes\setdressing\playerhouse_ruin\playerhouse_ruin_kitchenstove01.nif': 'KitchenStoveRuin01.nif',
+    r'meshes\setdressing\playerhouse\playerhouse_kitchenstove01.nif': 'KitchenStove01.nif',
+    r'meshes\setdressing\expressomachine\expresso_machine01.nif': 'EspressoMachine01.nif',
 }
 GEOMETRY = {'BSTriShape', 'BSSubIndexTriShape', 'BSMeshLODTriShape', 'NiTriShape', 'BSDynamicTriShape'}
 

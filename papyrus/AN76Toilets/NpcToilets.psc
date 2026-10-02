@@ -25,6 +25,12 @@ Form[] Property Toilets Auto Const Mandatory
 GlobalVariable Property NpcToiletsOn Auto Const Mandatory
 GlobalVariable Property NpcToiletChance Auto Const Mandatory
 GlobalVariable Property SoundsSetting Auto Const Mandatory
+GlobalVariable Property LeftoversOn Auto Const Mandatory
+{MCM (2026-10-02): a pile by a toilet that does not flush, and now and then a magazine left behind.}
+Form[] Property Magazines Auto Const Mandatory
+{Fallout4.esm's burnt magazines (MISC), the reading someone leaves by the toilet.}
+Int Property MagazinePercent = 35 Auto Const
+Int Property MaxProps = 6 Auto Const
 
 Float Property ScanSeconds = 4.0 Auto Const
 Float Property ScanRadius = 2500.0 Auto Const
@@ -45,10 +51,12 @@ Int Property AN76_OUTHOUSE = 0x005D23 AutoReadOnly
 Int Property AN76_POSTWAR = 0x005D22 AutoReadOnly
 Int Property AN76_HOBO = 0x00A2A2 AutoReadOnly
 Int Property AN76_INSTITUTE = 0x03FD70 AutoReadOnly
+Int Property AN76_POOP = 0x03FD6D AutoReadOnly     ; Activator Flashy_Acti_PoopBrown (deleted on unload)
 
 Form[] _toilets
 Actor[] _rested
 Float[] _restedAt
+ObjectReference[] _props   ; the magazines we left: gone once their area unloads
 
 Event OnQuestInit()
 	Begin()
@@ -107,6 +115,7 @@ Event OnTimer(Int aiTimerID)
 	If !OnOwnRecord() || aiTimerID != SCAN_TIMER
 		Return
 	EndIf
+	TidyProps()
 	If NpcToiletsOn.GetValueInt() == 1
 		Actor player = Game.GetPlayer()
 		Actor sitter = Sitter(player.FindAllReferencesWithKeyword(Game.GetFormFromFile(KW_HUMAN, "Fallout4.esm"), ScanRadius), player)
@@ -240,6 +249,77 @@ Function Show(Actor akActor)
 		i += 1
 	EndWhile
 	Debug.Trace("AN76 Toilets: " + akActor + " done, dressed again (" + putBack + " of " + worn.Length + " items)", 0)
+	If LeftoversOn.GetValueInt() == 1 && seat
+		LeaveBehind(seat, poop)
+	EndIf
+EndFunction
+
+; ---- what they leave behind (2026-10-02) ------------------------------------------------------
+
+; A toilet that does not flush (a broken one, AN76's hobo toilet) keeps the evidence: AN76's own pile on
+; the floor in front of it -- it missed. Now and then a burnt magazine by the toilet, someone's reading.
+Function LeaveBehind(ObjectReference akSeat, Bool abPoop)
+	Float a = akSeat.GetAngleZ()
+	If abPoop && !Flushes(akSeat)
+		Form pile = Game.GetFormFromFile(AN76_POOP, "Flashy_PersonalEssentials.esp")
+		If pile
+			; The sitter faces the seat's -Y: the floor just in front of the toilet.
+			ObjectReference p = akSeat.PlaceAtMe(pile, 1, False, False, True)
+			If p
+				p.MoveTo(akSeat, -24.0 * Math.Sin(a), -24.0 * Math.Cos(a), 0.0, False)
+			EndIf
+			Debug.Trace("AN76 Toilets: left a pile in front of " + akSeat, 0)
+		EndIf
+	EndIf
+	If Magazines.Length > 0 && Utility.RandomInt(1, 100) <= MagazinePercent
+		If _props == None
+			_props = new ObjectReference[0]
+		EndIf
+		If _props.Length >= MaxProps
+			Drop(0)
+		EndIf
+		ObjectReference m = akSeat.PlaceAtMe(Magazines[Utility.RandomInt(0, Magazines.Length - 1)], 1, False, False, True)
+		If m
+			; Beside the toilet on the floor (the seat's +X), at any angle.
+			m.MoveTo(akSeat, 30.0 * Math.Cos(a), -30.0 * Math.Sin(a), 2.0, False)
+			m.SetAngle(0.0, 0.0, Utility.RandomFloat(0.0, 359.0))
+			_props.Add(m)
+			Debug.Trace("AN76 Toilets: left a magazine by " + akSeat, 0)
+		EndIf
+	EndIf
+EndFunction
+
+Bool Function Flushes(ObjectReference akSeat)
+	AN76Toilets:Seat ours = akSeat as AN76Toilets:Seat
+	If ours
+		Return ours.Flushable
+	EndIf
+	; AN76's hobo toilet is a bucket; every other toilet an NPC sits on has water or a pit.
+	Return akSeat.GetBaseObject() != Game.GetFormFromFile(AN76_HOBO, "Flashy_PersonalEssentials.esp")
+EndFunction
+
+; The magazines we left: deleted once their area has unloaded, or when the player picked one up.
+Function TidyProps()
+	If _props == None
+		Return
+	EndIf
+	Int i = _props.Length - 1
+	While i >= 0
+		ObjectReference m = _props[i]
+		If !m || !m.Is3DLoaded() || m.GetContainer()
+			Drop(i)
+		EndIf
+		i -= 1
+	EndWhile
+EndFunction
+
+Function Drop(Int aiIndex)
+	ObjectReference m = _props[aiIndex]
+	If m && !m.GetContainer()
+		m.Disable(False)
+		m.Delete()
+	EndIf
+	_props.Remove(aiIndex, 1)
 EndFunction
 
 ; Waits, then says whether the NPC is still sitting there for the next beat (up and gone: the show ends).

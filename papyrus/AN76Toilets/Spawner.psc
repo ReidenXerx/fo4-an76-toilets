@@ -1,5 +1,6 @@
 Scriptname AN76Toilets:Spawner extends Quest
-{Makes the world's toilets and urinals usable while Advanced Needs 76's Bathroom Needs are on.
+{Makes the world's toilets and urinals usable while Advanced Needs 76's Bathroom Needs are on, and
+(2026-10-02) its dead kitchen stoves and espresso machines: AN76's food prep and its Silt Bean coffee.
 
 Every few seconds, near the player: each vanilla toilet or urinal (a static nothing can activate)
 gets one of our spawns on top of it -- a seat for a toilet, an activator for a urinal -- built from
@@ -22,6 +23,10 @@ FormList Property AN76ToiletList Auto Const Mandatory
 {Empty in the plugin; filled at run time with AN76's four toilets (AN76 is not a master).}
 GlobalVariable Property WorldToiletsOn Auto Const Mandatory
 {MCM: world toilets and urinals usable.}
+Form[] Property Kitchens Auto Const Mandatory
+{The spawns that are kitchens (2026-10-02): a stove that preps food, an espresso machine that brews coffee.}
+GlobalVariable Property WorldKitchensOn Auto Const Mandatory
+{MCM: world stoves and coffee machines usable.}
 
 Float Property Radius = 1500.0 Auto Const
 Float Property TickSeconds = 3.0 Auto Const
@@ -40,7 +45,8 @@ Int Property MQ102_ID = 0x01CC2A AutoReadOnly                 ; Fallout4.esm MQ1
 
 ObjectReference[] _for
 ObjectReference[] _spawned
-Int _lastState = -1   ; -1 unknown, 0 AN76's bathroom off, 1 on
+Int _lastState = -1   ; retired 2026-10-02 (kept: a save holds it)
+Int _lastMask = -1    ; -1 unknown; 1 toilets on, 2 kitchens on
 Bool _bootstrapped = False
 ObjectReference[] _locked
 Int Property AN76_OUTHOUSE = 0x005D23 AutoReadOnly
@@ -56,7 +62,7 @@ Event Actor.OnPlayerLoadGame(Actor akSender)
 	If !OnOwnRecord()
 		Return
 	EndIf
-	_lastState = -1   ; say the bathroom state again on every load
+	_lastMask = -1   ; say the state again on every load
 	Begin()
 EndEvent
 
@@ -147,17 +153,24 @@ Function Tick()
 		Bootstrap()
 	EndIf
 	LockAN76Toilets(Game.GetPlayer())
-	If !BathroomOn() || WorldToiletsOn.GetValueInt() == 0
-		If _lastState != 0
-			Debug.Trace("AN76 Toilets: AN76's Bathroom Needs are off (or AN76 is not installed) - nothing placed", 0)
-			_lastState = 0
-		EndIf
-		RemoveAll()
-		Return
+	; Two switches: the toilets need AN76's Bathroom Needs running, the kitchens only AN76 itself (its
+	; prepped food and its coffee). Either one changing takes everything down; the next ticks place again.
+	Bool toiletsOn = BathroomOn() && WorldToiletsOn.GetValueInt() == 1
+	Bool kitchensOn = Game.IsPluginInstalled("Flashy_PersonalEssentials.esp") && WorldKitchensOn.GetValueInt() == 1
+	Int mask = 0
+	If toiletsOn
+		mask += 1
 	EndIf
-	If _lastState != 1
-		Debug.Trace("AN76 Toilets: AN76's Bathroom Needs are on - world toilets become usable", 0)
-		_lastState = 1
+	If kitchensOn
+		mask += 2
+	EndIf
+	If mask != _lastMask
+		Debug.Trace("AN76 Toilets: world toilets " + toiletsOn + " (AN76's Bathroom Needs and the MCM), world kitchens " + kitchensOn, 0)
+		_lastMask = mask
+		RemoveAll()
+	EndIf
+	If mask == 0
+		Return
 	EndIf
 	Actor player = Game.GetPlayer()
 	Prune(player)
@@ -176,7 +189,8 @@ Function Tick()
 			Int index = Targets.Find(target.GetBaseObject())
 			If index >= 0
 				Form spawn = Spawns[index]
-				If male || Urinals.Find(spawn) < 0
+				Bool kitchen = Kitchens.Find(spawn) >= 0
+				If (kitchen && kitchensOn) || (!kitchen && toiletsOn && (male || Urinals.Find(spawn) < 0))
 					Place(target, spawn)
 				EndIf
 			EndIf
@@ -184,7 +198,7 @@ Function Tick()
 		i += 1
 	EndWhile
 	If _spawned.Length > before
-		Debug.Trace("AN76 Toilets: " + (_spawned.Length - before) + " placed (" + found.Length + " toilets and urinals in range, " + _spawned.Length + " live)", 0)
+		Debug.Trace("AN76 Toilets: " + (_spawned.Length - before) + " placed (" + found.Length + " toilets, urinals, stoves and coffee machines in range, " + _spawned.Length + " live)", 0)
 	EndIf
 EndFunction
 

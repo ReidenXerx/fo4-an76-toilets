@@ -2,6 +2,7 @@
 .SYNOPSIS
   Builds the release zip build\dist\AN76Toilets-<VERSION>.zip: the plugin, scripts, icon and MCM page loose, the
   sounds, voices and meshes in "AN76_Toilets - Main.ba2" (uncompressed: compressed audio in a BA2 does not play),
+  the pee stain's textures loose (a general BA2 does not carry textures),
   docs under Docs\AN76Toilets, and the FOMOD (tools\fomod_pack.py). Then nexus-tools' fomod-check and the sha256.
   Refuses uncommitted sources. -Draft builds the FOMOD without the cards (a check run, never a release).
   Never the dev ini: the release is built from build\data, which never holds it.
@@ -21,7 +22,7 @@ try {
     $dirty = @(git status --porcelain -- papyrus tools sounds voice widget scripts VERSION CHANGELOG.md README.md LICENSE 2>$null)
     if ($dirty.Count -gt 0 -and -not $Draft) { throw ("Commit the sources first:`n  " + ($dirty -join "`n  ")) }
     if (-not $NoBuild) {
-        foreach ($tool in 'make_esp', 'make_sounds', 'make_mcm', 'make_voice', 'check_esp') {
+        foreach ($tool in 'make_esp', 'make_sounds', 'make_mcm', 'make_voice', 'make_meshes', 'make_textures', 'check_esp') {
             python "tools\$tool.py"
             if ($LASTEXITCODE) { throw "tools\$tool.py failed" }
         }
@@ -35,7 +36,7 @@ $out = Join-Path $root "build\dist\AN76Toilets-$version"
 $zip = "$out.zip"
 if (Test-Path $out) { Remove-Item -Recurse -Force $out }
 New-Item -ItemType Directory -Force $out | Out-Null
-foreach ($item in 'AN76_Toilets.esp', 'Scripts', 'Interface', 'MCM') {
+foreach ($item in 'AN76_Toilets.esp', 'Scripts', 'Interface', 'MCM', 'Textures') {
     Copy-Item -Recurse (Join-Path $data $item) $out
 }
 if (Get-ChildItem $out -Recurse -Filter *.ini) { throw 'an .ini reached the release folder' }

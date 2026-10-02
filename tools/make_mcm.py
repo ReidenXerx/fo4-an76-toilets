@@ -78,6 +78,11 @@ def build():
                  "You stink: AN76's body odour until you bathe or swim (with AN76's bathing on; otherwise "
                  "6 game hours). Gnats where it happened, aftershock farts as you walk, and people near you gag, "
                  "pull a face, or throw up."),
+        switcher('Leftovers', 'Setting_LeftoversOn',
+                 "What it leaves behind: AN76's poop pile where you stood (green when you are sick), or a wet "
+                 "stain on the floor that fades by itself; a pile of puke in front of anyone who throws up; "
+                 "NPCs leave a pile by a toilet that does not flush, and now and then a magazine. "
+                 "Everything cleans itself up when you leave the area."),
         {'text': 'Sounds', 'type': 'section'},
         switcher('Bathroom sounds', 'Setting_SoundsOn',
                  'The stomach rumble when the need hits; straining, farts, plops and a sigh of relief '
@@ -87,6 +92,11 @@ def build():
         switcher('Use the toilets already in the world', 'Setting_WorldToilets',
                  'Broken, vault and house toilets become seats, and men can use urinals. '
                  'AN76\'s own toilets always work.'),
+        {'text': 'World kitchens', 'type': 'section'},
+        switcher('Use the stoves and coffee machines', 'Setting_WorldKitchens',
+                 "The dead kitchen stoves prep food like AN76's Prep Stove: all your raw meat and produce "
+                 "become AN76's prepped meat and vegetables. The espresso machines brew AN76's Silt Bean "
+                 'coffee, drunk standing at the machine. Needs only AN76, not its Bathroom Needs.'),
         {'text': 'NPCs on toilets', 'type': 'section'},
         switcher('NPCs go too', 'Setting_NpcToiletsOn',
                  'Anyone who sits down on a toilet in their own routine (a settler on a world toilet, the '
@@ -115,6 +125,8 @@ def build():
         button('Calm everyone', 'AccidentQuest', 'DebugCalm', 'Ends a panic now.'),
         button('Soil me', 'AccidentQuest', 'DebugSoil', 'The aftermath alone: body odour, gnats, flies, gagging.'),
         button('Clean me', 'AccidentQuest', 'DebugClean', "Ends the aftermath and washes off AN76's body odour."),
+        button('Leave a wet stain', 'AccidentQuest', 'DebugStain', 'The pee stain on the floor under you.'),
+        button('Leave a pile', 'AccidentQuest', 'DebugPile', "AN76's poop pile at your feet (brown or green)."),
         {'text': 'Voices and lip sync', 'type': 'section'},
         button('Nearest person throws up', 'AccidentQuest', 'DebugPuke',
                'Someone within 6 m bends over and vomits.'),

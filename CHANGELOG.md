@@ -1,5 +1,18 @@
 # Changelog
 
+## Unreleased
+
+- World kitchens: the dead kitchen stoves (6 kinds, placed 355 times) prep food like AN76's Prep Stove, and the
+  espresso machines (placed 42 times) brew AN76's Silt Bean coffee, drunk standing at the machine. Needs only AN76,
+  not its Bathroom Needs; an MCM switch.
+- Leftovers (an MCM switch):
+  - a poop accident leaves AN76's pile where you stood (green when you are sick);
+  - a pee accident leaves a wet stain on the floor that fades by itself;
+  - whoever throws up leaves AN76's pile of puke;
+  - NPCs leave a pile by a toilet that does not flush, and now and then a magazine.
+  - Everything cleans itself up when you leave the area.
+- Testing page: leave a wet stain, leave a pile.
+
 ## 1.0.0 (2026-10-02)
 
 First release.

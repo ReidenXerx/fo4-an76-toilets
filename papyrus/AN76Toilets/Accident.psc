@@ -36,6 +36,10 @@ Int Property PukePercent = 30 Auto Const
 GlobalVariable Property PanicOn Auto Const Mandatory
 GlobalVariable Property PanicSeconds Auto Const Mandatory
 GlobalVariable Property AftermathOn Auto Const Mandatory
+GlobalVariable Property LeftoversOn Auto Const Mandatory
+{MCM (2026-10-02): what an accident leaves on the floor, and the puke of whoever throws up.}
+ImpactDataSet Property PeePuddle Auto Const Mandatory
+{Our decal: a wet yellow stain stamped on whatever floor is under the player; the engine fades it.}
 
 Float Property PanicRadius = 1750.0 Auto Const
 {25 m.}
@@ -53,6 +57,8 @@ Int Property DEBUG_PANIC_TIMER = 10 AutoReadOnly
 Int Property DEBUG_SOIL_TIMER = 11 AutoReadOnly
 Int Property DEBUG_SCREAM_TIMER = 12 AutoReadOnly
 Int Property DEBUG_PUKE_TIMER = 13 AutoReadOnly
+Int Property DEBUG_STAIN_TIMER = 14 AutoReadOnly
+Int Property DEBUG_PILE_TIMER = 15 AutoReadOnly
 Int Property AN76_BATHING_POTION = 0x03303C AutoReadOnly ; Potion Flashy_Hygiene_BathingPotion
 
 ; Fallout4.esm
@@ -75,6 +81,9 @@ Int Property AN76_NEXT_BATH = 0x033038 AutoReadOnly     ; ActorValue Flashy_Hygi
 Int Property AN76_BODY_ODOUR = 0x03303D AutoReadOnly    ; Potion Flashy_Hygiene_BodyOdour
 Int Property AN76_ODOUR_EFFECT = 0x03303A AutoReadOnly  ; MagicEffect Flashy_ME_BodyOdour
 Int Property AN76_GNATS = 0x03FD6F AutoReadOnly         ; Activator Flashy_Acti_GnatSwarm (deletes itself)
+Int Property AN76_POOP = 0x03FD6D AutoReadOnly          ; Activator Flashy_Acti_PoopBrown (deleted on unload)
+Int Property AN76_POOP_SICK = 0x03FD6E AutoReadOnly     ; Activator Flashy_Acti_PoopGreen (deleted on unload)
+Int Property AN76_VOMIT = 0x001EF7 AutoReadOnly         ; Activator Flashy_Vomit (deletes itself after 2 min)
 
 Bool _sounds = True
 Bool _soiled = False
@@ -147,7 +156,8 @@ EndFunction
 ; ---- the accident --------------------------------------------------------------------------
 
 ; abPoop: which one it was. abSounds: the sound watcher's verdict on the MCM and AN76's sound switches.
-Function Trigger(Bool abPoop, Bool abSounds)
+; abSick: AN76's sick poop (the green pile).
+Function Trigger(Bool abPoop, Bool abSounds, Bool abSick = False)
 	If !OnOwnRecord()
 		Return
 	EndIf
@@ -182,6 +192,9 @@ Function Trigger(Bool abPoop, Bool abSounds)
 		Debug.Notification("You couldn't hold it any longer. You've wet yourself.")
 	EndIf
 	ClearNeed(player)
+	If LeftoversOn.GetValueInt() == 1
+		LeaveBehind(player, abPoop, abSick)
+	EndIf
 	Utility.Wait(1.0)
 	If PanicOn.GetValueInt() == 1
 		Panic(player)
@@ -362,6 +375,40 @@ Function Soil(Actor akPlayer)
 	Debug.Trace("AN76 Toilets: soiled - AN76 body odour " + _odour + ", gnats " + (gnats != None), 0)
 EndFunction
 
+; What the accident leaves where it happened (owner 2026-10-02): a poop, AN76's own pile -- the green one
+; when AN76 says you are sick, placed the way AN76 places it after going outdoors; it deletes itself
+; when the area unloads. A pee: our wet stain, a decal on the floor under you that the engine fades.
+Function LeaveBehind(Actor akPlayer, Bool abPoop, Bool abSick)
+	If abPoop
+		Int pile = AN76_POOP
+		If abSick
+			pile = AN76_POOP_SICK
+		EndIf
+		Form f = AN76(pile)
+		If f
+			akPlayer.PlaceAtMe(f, 1, False, False, True)
+		EndIf
+		Debug.Trace("AN76 Toilets: left AN76's pile (sick " + abSick + ", found " + (f != None) + ")", 0)
+	Else
+		; From the pelvis straight down, so the stain lands on whatever floor is under you.
+		Bool stamped = akPlayer.PlayImpactEffect(PeePuddle, "Pelvis", 0.0, 0.0, -1.0, 200.0, False, False)
+		Debug.Trace("AN76 Toilets: left a wet stain - " + stamped, 0)
+	EndIf
+EndFunction
+
+; AN76's pile of puke on the floor just in front of whoever threw up; it deletes itself after 2 minutes.
+Function PukePile(Actor akActor)
+	Form vomit = AN76(AN76_VOMIT)
+	If !vomit
+		Return
+	EndIf
+	ObjectReference pile = akActor.PlaceAtMe(vomit, 1, False, False, True)
+	If pile
+		Float a = akActor.GetAngleZ()
+		pile.MoveTo(akActor, 35.0 * Math.Sin(a), 35.0 * Math.Cos(a), 0.0, False)
+	EndIf
+EndFunction
+
 Bool Function StillSoiled(Actor akPlayer)
 	If _odour
 		MagicEffect odour = AN76(AN76_ODOUR_EFFECT) as MagicEffect
@@ -443,6 +490,9 @@ Function Puke(Actor akActor, Bool abBendOver)
 		Else
 			Speak(akActor, PukeMaleLines)
 		EndIf
+	EndIf
+	If LeftoversOn.GetValueInt() == 1
+		PukePile(akActor)
 	EndIf
 	Debug.Trace("AN76 Toilets: " + akActor + " throws up", 0)
 EndFunction
@@ -534,6 +584,10 @@ Event OnTimer(Int aiTimerID)
 		Else
 			Debug.Notification("AN76 Toilets debug: nobody within 6 m.")
 		EndIf
+	ElseIf aiTimerID == DEBUG_STAIN_TIMER
+		LeaveBehind(Game.GetPlayer(), False, False)
+	ElseIf aiTimerID == DEBUG_PILE_TIMER
+		LeaveBehind(Game.GetPlayer(), True, Utility.RandomInt(0, 1) == 0)
 	ElseIf aiTimerID == DEBUG_SCREAM_TIMER
 		Actor near = SomeoneNear(Game.GetPlayer())
 		If near
@@ -578,6 +632,16 @@ Function DebugClean()
 	_soiled = False
 	UnGag()
 	Debug.Notification("AN76 Toilets debug: clean.")
+EndFunction
+
+Function DebugStain()
+	StartTimer(0.5, DEBUG_STAIN_TIMER)
+	Debug.Notification("AN76 Toilets debug: a wet stain under you when you close the menu.")
+EndFunction
+
+Function DebugPile()
+	StartTimer(0.5, DEBUG_PILE_TIMER)
+	Debug.Notification("AN76 Toilets debug: AN76's pile at your feet when you close the menu.")
 EndFunction
 
 Function DebugPuke()

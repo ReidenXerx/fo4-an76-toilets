@@ -140,6 +140,7 @@ SETTINGS = [
     ('AccidentsOn', 1.0), ('OrangeHours', 2.0), ('AccidentHours', 4.0),
     ('PanicOn', 1.0), ('PanicSeconds', 60.0), ('AftermathOn', 1.0),
     ('NpcToiletsOn', 1.0), ('NpcToiletChance', 100.0),
+    ('WorldKitchens', 1.0), ('LeftoversOn', 1.0),
 ]
 
 # The panic. Measured 2026-09-29, one test each in Diamond City: FO4 has no way to make a CALM NPC run.
@@ -152,6 +153,25 @@ SETTINGS = [
 # the cower the script plays on them.
 PANIC_HOLD_PACKAGE = 0x01D415   # Fallout4.esm PACK HoldPosition, no conditions
 
+# World kitchens (owner 2026-10-02): the dead kitchen stoves prep food like AN76's Prep Stove, the espresso
+# machines brew its Silt Bean coffee. Hidden copies of each model, as the toilets. Bounds from Fallout4.esm.
+STOVES = [
+    ('Ruin', 'KitchenStoveRuin01.nif', (-33, -36, 0, 33, 27, 83)),
+    ('House', 'KitchenStove01.nif', (-33, -36, 0, 33, 27, 83)),
+]
+# The coffee spot: AN76's Siltbean Coffee Machine's furniture (vanilla coffee drinking, the NPC coffee
+# marker) on the vanilla espresso machine. Vanilla never stands a coffee marker by one (0 pairs in
+# Fallout4.esm), so the drinker stands 55 units off the machine's -Y side facing it: tune in game.
+COFFEE = ('Espresso', 'EspressoMachine01.nif', (-44, -23, 0, 37, 30, 96), (0.0, -55.0, 0.0, 0.0))
+KW_FURNITURE_SPECIAL = 0x0006E9C7  # FurnitureSpecial
+KW_COFFEE_DRINKING = 0x001AD806    # AnimFurnCoffeeDrinking
+MAGAZINES = [0x19569E, 0x19569F, 0x1956A0]   # MISC MagazineBurnt01-03
+# The pee stain (2026-10-02): our decal through an impact data set, the way blood splats land. Layouts
+# cloned from Fallout4.esm TXST 0BB960 DecalBloodSprayGroundGreen and IPCT 249DBF; the materials are
+# every one destWaterImpactSet covers (tools/impact_materials.json), so it lands on any floor.
+IMPACT_MATERIALS = [int(m, 16) for m in json.loads(
+    (pathlib.Path(__file__).resolve().parent / 'impact_materials.json').read_text())['materials']]
+
 # vanilla base (Fallout4.esm) -> our spawn key
 TARGETS = [
     (0x02CD27, 'Seat_Broken01'), (0x034A3F, 'Seat_Broken01'),
@@ -162,6 +182,10 @@ TARGETS = [
     (0x091932, 'Seat_HouseRuin'), (0x0248C2, 'Seat_HouseRuin'),
     (0x0305A8, 'Urinal_Broken'), (0x034A3B, 'Urinal_Broken'),
     (0x08025D, 'Urinal_Stall01'), (0x08025E, 'Urinal_Stall02'), (0x08025F, 'Urinal_Stall03'),
+    # Stove01_BareMetal, _StainlessSteel, _Blue, _Yellow, _White; PlayerHouse_KitchenStove01
+    (0x035ADC, 'Stove_Ruin'), (0x035ADD, 'Stove_Ruin'), (0x05DC76, 'Stove_Ruin'), (0x035ADA, 'Stove_Ruin'),
+    (0x035ADB, 'Stove_Ruin'), (0x05884A, 'Stove_House'),
+    (0x04CE3B, 'Coffee_Espresso'),   # Espresso_Machine01_Dirty
 ]
 
 
@@ -285,6 +309,58 @@ def build():
         blob += field('FNAM', struct.pack('<H', 0))
         acti += record('ACTI', fid, blob)
 
+    for key, mesh, bounds in STOVES:
+        fid = new_id('Stove_' + key)
+        blob = field('EDID', zstring('AN76T_Stove_' + key))
+        blob += field('VMAD', vmad('AN76Toilets:PrepStove', []))
+        blob += field('OBND', obnd(bounds))
+        blob += field('FULL', zstring('Stove'))
+        blob += field('MODL', zstring('AN76Toilets\\' + mesh))
+        blob += field('PNAM', bytes.fromhex('cc4c3300'))
+        blob += field('ATTX', zstring('Prep Food'))
+        blob += field('FNAM', struct.pack('<H', 0))
+        acti += record('ACTI', fid, blob)
+
+    key, mesh, bounds, (x, y, z, h) = COFFEE
+    fid = new_id('Coffee_' + key)
+    blob = field('EDID', zstring('AN76T_Coffee_' + key))
+    blob += field('VMAD', vmad('AN76Toilets:CoffeeMachine', []))
+    blob += field('OBND', obnd(bounds))
+    blob += field('FULL', zstring('Espresso Machine'))
+    blob += field('MODL', zstring('AN76Toilets\\' + mesh))
+    blob += field('KSIZ', struct.pack('<I', 3))
+    blob += field('KWDA', struct.pack('<3I', KW_FURNITURE_SPECIAL, KW_RELAXATION, KW_COFFEE_DRINKING))
+    blob += field('PNAM', bytes.fromhex('cc4c3300'))
+    blob += field('ATTX', zstring('Brew Coffee'))
+    blob += field('FNAM', struct.pack('<H', 0))
+    blob += field('MNAM', bytes.fromhex('01000040'))
+    blob += field('WBDT', b'\x00')
+    blob += field('XMRK', zstring('Markers\\MarkerNPCCoffee.nif'))
+    blob += field('SNAM', struct.pack('<4fIi', x, y, z, h, 0, -1))
+    furn += record('FURN', fid, blob)
+
+    txst_id, ipct_id, ipds_id = new_id('PeeTexture'), new_id('PeeImpact'), new_id('PeeImpactSet')
+    tx = field('EDID', zstring('AN76T_DecalPeePuddle'))
+    tx += field('OBND', obnd((-8, -30, -20, 7, 30, 20)))
+    tx += field('TX00', zstring('AN76Toilets\\PeePuddle_d.dds'))
+    tx += field('TX01', zstring('AN76Toilets\\PeePuddle_n.dds'))
+    # min/max width, min/max height, depth, shininess, parallax scale, passes, flags (vanilla's), colour
+    tx += field('DODT', struct.pack('<7fBBBB4B', 48.0, 64.0, 48.0, 64.0, 32.0, 300.0, 1.0,
+                                     0x10, 0x62, 0x7F, 0, 0xFF, 0xFF, 0xFF, 0))
+    tx += field('DNAM', struct.pack('<H', 0))
+    txst = record('TXST', txst_id, tx)
+    ip = field('EDID', zstring('AN76T_PeeImpact'))
+    ip += field('MODL', zstring('Effects\\ImpactBallisticBloodClear.nif'))
+    # duration, orientation 1, angle threshold 85, placement radius 16, sound level 1, flags 1 (the decal
+    # data is the texture set's), result 0
+    ip += field('DATA', bytes.fromhex('0000803e010000000000aa42000080410100000001000000'))
+    ip += field('DNAM', struct.pack('<I', txst_id))
+    ipct = record('IPCT', ipct_id, ip)
+    ids_ = field('EDID', zstring('AN76T_PeeImpactSet'))
+    for mat in IMPACT_MATERIALS:
+        ids_ += field('PNAM', struct.pack('<II', mat, ipct_id))
+    ipds = record('IPDS', ipds_id, ids_)
+
     glob = b''
     for name, default in SETTINGS:
         gid = new_id('Setting_' + name)
@@ -306,6 +382,7 @@ def build():
     targets = struct.pack('<I', len(TARGETS)) + b''.join(obj(b) for b, _ in TARGETS)
     spawns = struct.pack('<I', len(TARGETS)) + b''.join(obj(ids[k]) for _, k in TARGETS)
     urinal_ids = [ids['Urinal_' + k] for k, _, _ in URINALS]
+    kitchen_ids = [ids['Stove_' + k] for k, _, _ in STOVES] + [ids['Coffee_' + COFFEE[0]]]
     urinals = struct.pack('<I', len(urinal_ids)) + b''.join(obj(u) for u in urinal_ids)
     quest = field('EDID', zstring('AN76T_Spawner'))
     quest += field('VMAD', vmad('AN76Toilets:Spawner', [
@@ -315,6 +392,8 @@ def build():
         ('TargetList', 1, obj(flst_id)),
         ('AN76ToiletList', 1, obj(an76_list_id)),
         ('WorldToiletsOn', 1, obj(ids['Setting_WorldToilets'])),
+        ('Kitchens', 11, struct.pack('<I', len(kitchen_ids)) + b''.join(obj(k) for k in kitchen_ids)),
+        ('WorldKitchensOn', 1, obj(ids['Setting_WorldKitchens'])),
     ]))
     quest += field('DNAM', bytes.fromhex('110064670000000000000000'))
     quest += field('NEXT', b'')
@@ -387,7 +466,8 @@ def build():
          'AccidentPoopF', 'AccidentPeeF', 'FartShortF', 'FartWetF')] + [
         (n + 'Lines', 11, topic_array(n)) for n in
         ('ScreamMale', 'ScreamFemale', 'GagMale', 'GagFemale', 'PukeMale', 'PukeFemale')] + [
-        (n, 1, obj(ids['Setting_' + n])) for n in ('PanicOn', 'PanicSeconds', 'AftermathOn')]))
+        (n, 1, obj(ids['Setting_' + n])) for n in ('PanicOn', 'PanicSeconds', 'AftermathOn', 'LeftoversOn')] + [
+        ('PeePuddle', 1, obj(ipds_id))]))
     aq += field('DNAM', bytes.fromhex('110064670000000000000000'))
     aq += field('NEXT', b'')
     # One reference collection, alias 0 "Panicked": empty until the script adds people; optional, may
@@ -415,7 +495,9 @@ def build():
         ('Toilets', 11, struct.pack('<I', len(toilets)) + b''.join(obj(t) for t in toilets)),
         ('NpcToiletsOn', 1, obj(ids['Setting_NpcToiletsOn'])),
         ('NpcToiletChance', 1, obj(ids['Setting_NpcToiletChance'])),
-        ('SoundsSetting', 1, obj(ids['Setting_SoundsOn']))]))
+        ('SoundsSetting', 1, obj(ids['Setting_SoundsOn'])),
+        ('LeftoversOn', 1, obj(ids['Setting_LeftoversOn'])),
+        ('Magazines', 11, struct.pack('<I', len(MAGAZINES)) + b''.join(obj(m) for m in MAGAZINES))]))
     nq += field('DNAM', bytes.fromhex('110064670000000000000000'))
     nq += field('NEXT', b'')
     quest_rec += record('QUST', npc_quest_id, nq)
@@ -428,7 +510,8 @@ def build():
     header += field('CNAM', zstring(AUTHOR))
     header += field('MAST', zstring(MASTER))
     header += field('DATA', struct.pack('<Q', 0))
-    body = (group('GLOB', glob) + group('SNDR', sndr) + group('ACTI', acti) + group('FURN', furn)
+    body = (group('TXST', txst) + group('GLOB', glob) + group('SNDR', sndr) + group('ACTI', acti)
+            + group('FURN', furn) + group('IPCT', ipct) + group('IPDS', ipds)
             + group('FLST', flst_rec + an76_list) + group('QUST', quest_rec))
     return record('TES4', 0, header, flags=TES4_LIGHT) + body, ids
 
