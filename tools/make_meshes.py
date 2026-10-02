@@ -13,7 +13,10 @@ import struct
 import sys
 import zlib
 
-DATA = pathlib.Path(r'D:\GOGGames\Fallout 4 GOTY\Data')
+# The vanilla meshes archive: the GOG install, or the AE one (AE is the main install since 2026-10-01).
+DATA = next((d for d in (pathlib.Path(r'D:\GOGGames\Fallout 4 GOTY\Data'),
+                         pathlib.Path(r'D:\SteamFreeGames\Fallout 4 AE\Data'))
+             if (d / 'Fallout4 - Meshes.ba2').exists()), pathlib.Path(r'D:\GOGGames\Fallout 4 GOTY\Data'))
 ARCHIVE = 'Fallout4 - Meshes.ba2'
 
 # vanilla model -> our file name

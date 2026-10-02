@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.1.0 (2026-10-02)
 
 - World kitchens: the dead kitchen stoves (6 kinds, placed 355 times) prep food like AN76's Prep Stove, and the
   espresso machines (placed 42 times) brew AN76's Silt Bean coffee, drunk standing at the machine. Needs only AN76,

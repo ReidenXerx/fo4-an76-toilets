@@ -262,7 +262,8 @@ Function LeaveBehind(ObjectReference akSeat, Bool abPoop)
 	Float a = akSeat.GetAngleZ()
 	If abPoop && !Flushes(akSeat)
 		Form pile = Game.GetFormFromFile(AN76_POOP, "Flashy_PersonalEssentials.esp")
-		If pile
+		; One pile per toilet: the next visitor does not stack another on it.
+		If pile && !Game.FindClosestReferenceOfTypeFromRef(pile, akSeat, 80.0)
 			; The sitter faces the seat's -Y: the floor just in front of the toilet.
 			ObjectReference p = akSeat.PlaceAtMe(pile, 1, False, False, True)
 			If p
@@ -298,7 +299,8 @@ Bool Function Flushes(ObjectReference akSeat)
 	Return akSeat.GetBaseObject() != Game.GetFormFromFile(AN76_HOBO, "Flashy_PersonalEssentials.esp")
 EndFunction
 
-; The magazines we left: deleted once their area has unloaded, or when the player picked one up.
+; The magazines we left: deleted once their cell has unloaded, or forgotten when the player picked one up.
+; By the cell, not Is3DLoaded: a havok item just placed can read unloaded for a moment (review 2026-10-02).
 Function TidyProps()
 	If _props == None
 		Return
@@ -306,7 +308,11 @@ Function TidyProps()
 	Int i = _props.Length - 1
 	While i >= 0
 		ObjectReference m = _props[i]
-		If !m || !m.Is3DLoaded() || m.GetContainer()
+		Cell c = None
+		If m
+			c = m.GetParentCell()
+		EndIf
+		If !m || m.GetContainer() || !c || !c.IsAttached()
 			Drop(i)
 		EndIf
 		i -= 1

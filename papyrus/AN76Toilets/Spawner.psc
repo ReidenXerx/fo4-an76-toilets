@@ -34,6 +34,8 @@ Float Property ScaleUp = 1.02 Auto Const
 Float Property MaxTilt = 10.0 Auto Const
 {Degrees. A toilet lying on its side is scenery.}
 Int Property MaxSpawns = 48 Auto Const
+Int Property MaxKitchens = 24 Auto Const
+{Of MaxSpawns: a kitchen-dense place (a diner, a hub) never takes the toilets' share (review 2026-10-02).}
 
 Int Property TICK_TIMER = 1 AutoReadOnly
 Int Property AN76_BATHROOM_QUEST = 0x03B902 AutoReadOnly
@@ -180,22 +182,31 @@ Function Tick()
 	Bool male = player.GetActorBase().GetSex() == 0
 	ObjectReference[] found = player.FindAllReferencesOfType(TargetList as Form, Radius)
 	Int before = _spawned.Length
-	Int i = 0
-	While i < found.Length && _spawned.Length < MaxSpawns
-		ObjectReference target = found[i]
-		; Not a toilet shrunk to nothing: a mod hides a leftover that way (a tester, 2026-10-01: the Underground
-		; Hideout's "TOILET" floated mid-floor, the poop landed there, the real toilet stood by the wall).
-		If target && !target.IsDisabled() && _for.Find(target) < 0 && Upright(target) && target.GetScale() >= 0.5
-			Int index = Targets.Find(target.GetBaseObject())
-			If index >= 0
-				Form spawn = Spawns[index]
-				Bool kitchen = Kitchens.Find(spawn) >= 0
-				If (kitchen && kitchensOn) || (!kitchen && toiletsOn && (male || Urinals.Find(spawn) < 0))
-					Place(target, spawn)
+	; Two passes: the toilets and urinals first, then the kitchens, at most MaxKitchens of them.
+	Int kitchenCount = CountKitchens()
+	Int pass = 0
+	While pass < 2
+		Int i = 0
+		While i < found.Length && _spawned.Length < MaxSpawns
+			ObjectReference target = found[i]
+			; Not a toilet shrunk to nothing: a mod hides a leftover that way (a tester, 2026-10-01: the Underground
+			; Hideout's "TOILET" floated mid-floor, the poop landed there, the real toilet stood by the wall).
+			If target && !target.IsDisabled() && _for.Find(target) < 0 && Upright(target) && target.GetScale() >= 0.5
+				Int index = Targets.Find(target.GetBaseObject())
+				If index >= 0
+					Form spawn = Spawns[index]
+					Bool kitchen = Kitchens.Find(spawn) >= 0
+					If pass == 0 && !kitchen && toiletsOn && (male || Urinals.Find(spawn) < 0)
+						Place(target, spawn)
+					ElseIf pass == 1 && kitchen && kitchensOn && kitchenCount < MaxKitchens
+						Place(target, spawn)
+						kitchenCount += 1
+					EndIf
 				EndIf
 			EndIf
-		EndIf
-		i += 1
+			i += 1
+		EndWhile
+		pass += 1
 	EndWhile
 	If _spawned.Length > before
 		Debug.Trace("AN76 Toilets: " + (_spawned.Length - before) + " placed (" + found.Length + " toilets, urinals, stoves and coffee machines in range, " + _spawned.Length + " live)", 0)
@@ -240,6 +251,18 @@ Function LockAN76Toilets(Actor akPlayer)
 		EndIf
 		i += 1
 	EndWhile
+EndFunction
+
+Int Function CountKitchens()
+	Int n = 0
+	Int i = 0
+	While i < _spawned.Length
+		If _spawned[i] && Kitchens.Find(_spawned[i].GetBaseObject()) >= 0
+			n += 1
+		EndIf
+		i += 1
+	EndWhile
+	Return n
 EndFunction
 
 Bool Function Upright(ObjectReference akTarget)

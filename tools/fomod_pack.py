@@ -43,7 +43,16 @@ FEATURES = [
      'lip sync in every vanilla human and ghoul voice type: 8,110 voice files.'),
     ('World toilets and urinals', 'world-toilets.png',
      'The broken, vault and house toilets already in the world become seats you can use, and men can use urinals '
-     '(15 vanilla models). AN76\'s own toilets always work.'),
+     '(15 kinds of vanilla toilet and urinal). AN76\'s own toilets always work.'),
+    ('World kitchens', 'world-kitchens.png',
+     'The dead kitchen stoves in the world prep food like AN76\'s Prep Stove: all your raw meat and produce become '
+     'AN76\'s prepped meat and vegetables. The espresso machines brew AN76\'s Silt Bean coffee, drunk standing at '
+     'the machine. Needs only AN76, not its Bathroom Needs. A switch in MCM.'),
+    ('Leftovers', 'leftovers.png',
+     'An accident leaves something behind: AN76\'s poop pile where you stood (green when you are sick), or a wet '
+     'stain on the floor that fades by itself. Whoever throws up leaves a pile of puke. NPCs leave a pile by a '
+     'toilet that does not flush, and now and then a magazine. It all cleans itself up when you leave the area. '
+     'A switch in MCM.'),
 ]
 EXTRAS = ('And the rest',
           'The toilet icon joins the HUD\'s status-icon row (hunger, thirst, sleep, AN76).\n'

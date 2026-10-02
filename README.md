@@ -24,6 +24,12 @@ on the HUD, accidents when you hold it too long, usable world toilets and urinal
 - **NPCs use toilets too.** Anyone who sits down on a toilet in their own routine -- a settler on a world toilet, the
   Institute's toilets, Far Harbor's outhouses, AN76's built toilets -- undresses, goes, sighs and dresses again,
   with the sounds of their own sex. Children keep their clothes on. An MCM chance and a switch.
+- **World kitchens** (1.1.0). The dead kitchen stoves prep food like AN76's Prep Stove (all your raw meat and
+  produce become its prepped meat and vegetables), and the espresso machines brew its Silt Bean coffee, drunk
+  standing at the machine. Needs only AN76, not its Bathroom Needs.
+- **Leftovers** (1.1.0). A poop accident leaves AN76's own pile where you stood (green when you are sick), a pee
+  accident a wet stain that fades by itself; whoever throws up leaves a pile of puke; NPCs leave a pile by a toilet
+  that does not flush, and now and then a magazine. Everything cleans itself up when you leave the area.
 - **MCM** for every part, and a **Testing** page to try each one without waiting.
 
 ## Requirements
