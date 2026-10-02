@@ -29,7 +29,7 @@ NAME = 'AN76 Toilets'
 # (step name, card file, plain-text description). Facts as README.md has them.
 FEATURES = [
     ('Holding it: accidents and panic', 'accidents.png',
-     'Holding it never hurts: the toilet icon turns orange at 2 game hours and red at 4, and then you go in your '
+     'Holding it never hurts: the toilet icon turns orange at 3 game hours and red at 6, and then you go in your '
      'pants where you stand. Sleep and fast travel do not count; waiting does.\n'
      'Everyone within 25 m screams and cowers, then goes back to what they were doing. An accident mid-conversation '
      'ends the conversation. Afterwards you stink until you wash: gnats, aftershock farts, people gag or throw up.'),

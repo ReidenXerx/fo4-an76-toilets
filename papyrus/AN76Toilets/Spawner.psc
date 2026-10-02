@@ -44,12 +44,21 @@ Int Property AN76_NEEDS_QUEST = 0x001EDD AutoReadOnly        ; Flashy_NeedsMain 
 Int Property AN76_CAMPING_QUEST = 0x007B72 AutoReadOnly      ; Flashy_CampingSystem
 Int Property AN76_TOILET_ON = 0x03B8FB AutoReadOnly          ; GlobalVariable Flashy_NeedsHygieneToilet
 Int Property MQ102_ID = 0x01CC2A AutoReadOnly                 ; Fallout4.esm MQ102, AN76's own "left the vault" test
+; AN76's timers (its MCM sliders; read each time it starts a hunger, thirst or bathroom timer).
+Int Property AN76_HUNGER_LENGTH = 0x001EDE AutoReadOnly       ; GlobalVariable Flashy_NeedsHungerLength (6 h, 4-12)
+Int Property AN76_THIRST_LENGTH = 0x001EE1 AutoReadOnly       ; GlobalVariable Flashy_NeedsThirstLength (4 h, 2-8)
+Int Property AN76_BATHROOM_DELAY = 0x00A2C8 AutoReadOnly      ; GlobalVariable Flashy_HygieneBathroomDelay (3 h, 1.5-5)
+Float Property HungerHours = 10.0 Auto Const
+Float Property ThirstHours = 7.0 Auto Const
+Float Property BathroomDelayHours = 5.0 Auto Const
+{Owner 2026-10-02 (poll): hungry after 10 h, thirsty after 7 h, the bathroom need 1-5 h after a meal.}
 
 ObjectReference[] _for
 ObjectReference[] _spawned
 Int _lastState = -1   ; retired 2026-10-02 (kept: a save holds it)
 Int _lastMask = -1    ; -1 unknown; 1 toilets on, 2 kitchens on
 Bool _bootstrapped = False
+Bool _ratesSet = False   ; AN76's timers set once for this save (a save from before 1.2.0 gets it once too)
 ObjectReference[] _locked
 Int Property AN76_OUTHOUSE = 0x005D23 AutoReadOnly
 Int Property AN76_POSTWAR_TOILET = 0x005D22 AutoReadOnly
@@ -150,9 +159,37 @@ Function Bootstrap()
 	EndIf
 EndFunction
 
+; ONCE per save (owner 2026-10-02): AN76's hunger, thirst and bathroom timers set to ours, the way its own MCM
+; sliders set them. Never again: whatever the player sets in AN76's MCM afterwards stays.
+Function SetRates()
+	Quest essentials = Game.GetFormFromFile(AN76_ESSENTIALS_QUEST, "Flashy_PersonalEssentials.esp") as Quest
+	Quest mq102 = Game.GetFormFromFile(MQ102_ID, "Fallout4.esm") as Quest
+	If !essentials || (mq102 && mq102.GetStage() <= 2)
+		Return   ; AN76 not installed, or still in the game's opening: try again later
+	EndIf
+	GlobalVariable hunger = Game.GetFormFromFile(AN76_HUNGER_LENGTH, "Flashy_PersonalEssentials.esp") as GlobalVariable
+	GlobalVariable thirst = Game.GetFormFromFile(AN76_THIRST_LENGTH, "Flashy_PersonalEssentials.esp") as GlobalVariable
+	GlobalVariable delay = Game.GetFormFromFile(AN76_BATHROOM_DELAY, "Flashy_PersonalEssentials.esp") as GlobalVariable
+	If hunger
+		hunger.SetValue(HungerHours)
+	EndIf
+	If thirst
+		thirst.SetValue(ThirstHours)
+	EndIf
+	If delay
+		delay.SetValue(BathroomDelayHours)
+	EndIf
+	_ratesSet = True
+	Debug.Notification("AN76 Toilets: hungry after 10 h, thirsty after 7 h. Change it in AN76's MCM.")
+	Debug.Trace("AN76 Toilets: set AN76's timers once for this save - hunger " + HungerHours + " h (" + (hunger != None) + "), thirst " + ThirstHours + " h (" + (thirst != None) + "), bathroom delay up to " + BathroomDelayHours + " h (" + (delay != None) + ")", 0)
+EndFunction
+
 Function Tick()
 	If !_bootstrapped
 		Bootstrap()
+	EndIf
+	If !_ratesSet
+		SetRates()
 	EndIf
 	LockAN76Toilets(Game.GetPlayer())
 	; Two switches: the toilets need AN76's Bathroom Needs running, the kitchens only AN76 itself (its

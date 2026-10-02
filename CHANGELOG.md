@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.2.0 (2026-10-02)
+
+- Calmer needs (owner): once per save, AN76's timers are set to hungry after 10 game hours (AN76: 6), thirsty after 7 (AN76: 4), and the bathroom need 1 to 5 hours after a meal (AN76: up to 3). Saves from before get it once too; anything changed in AN76's MCM afterwards stays.
+- Holding it: orange at 3 game hours, the accident at 6 (was 2 and 4). Both MCM sliders.
+
 ## 1.1.1 (2026-10-02)
 
 - The player's voice only now and then (a tester: "funny the first time, after the eighth just an annoyance"): the relief line about one visit in 250, the straining one poop in 10. Both are MCM sliders under Sounds; NPCs keep theirs.

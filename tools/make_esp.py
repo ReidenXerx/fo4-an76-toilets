@@ -137,7 +137,7 @@ SETTINGS = [
     ('IconOn', 1.0), ('IconX', 1120.0), ('IconY', 560.0), ('IconScale', 1.0),
     ('SoundsOn', 1.0), ('WorldToilets', 1.0),
     ('IconNudgeX', 0.0), ('IconNudgeY', 0.0),
-    ('AccidentsOn', 1.0), ('OrangeHours', 2.0), ('AccidentHours', 4.0),
+    ('AccidentsOn', 1.0), ('OrangeHours', 3.0), ('AccidentHours', 6.0),
     ('PanicOn', 1.0), ('PanicSeconds', 60.0), ('AftermathOn', 1.0),
     ('NpcToiletsOn', 1.0), ('NpcToiletChance', 100.0),
     ('WorldKitchens', 1.0), ('LeftoversOn', 1.0),

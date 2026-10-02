@@ -10,8 +10,8 @@ on the HUD, accidents when you hold it too long, usable world toilets and urinal
   sync: scream, gag, puke, strain and relief in every vanilla human and ghoul voice type -- 8,110 voice files.
 - **The toilet icon.** Joins the HUD's status-icon row (hunger, thirst, sleep, AN76), yellow when you need to go,
   orange after a while, red when it can no longer wait. Needs HUDFramework.
-- **Holding it: accidents.** With accidents on (the default), holding it never hurts. The clock turns orange at 2
-  game hours and red at 4, and then you go in your pants where you stand. Sleep and fast travel do not count;
+- **Holding it: accidents.** With accidents on (the default), holding it never hurts. The clock turns orange at 3
+  game hours and red at 6, and then you go in your pants where you stand. Sleep and fast travel do not count;
   waiting does. Both hours are MCM sliders.
 - **Panic.** Everyone within 25 m screams and cowers, then goes back to what they were doing (FO4 cannot make a calm
   NPC run, so they cower). An accident mid-conversation ends the conversation, and the one you were talking to
@@ -30,6 +30,9 @@ on the HUD, accidents when you hold it too long, usable world toilets and urinal
 - **Leftovers** (1.1.0). A poop accident leaves AN76's own pile where you stood (green when you are sick), a pee
   accident a wet stain that fades by itself; whoever throws up leaves a pile of puke; NPCs leave a pile by a toilet
   that does not flush, and now and then a magazine. Everything cleans itself up when you leave the area.
+- **Calmer needs.** Once per save it sets AN76's own timers: hungry after 10 game hours (AN76: 6), thirsty
+  after 7 (AN76: 4), and the bathroom need 1 to 5 hours after a meal (AN76: up to 3). Change any of them in AN76's
+  MCM afterwards and that stays.
 - **MCM** for every part, and a **Testing** page to try each one without waiting.
 
 ## Requirements

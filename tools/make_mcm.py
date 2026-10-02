@@ -67,9 +67,9 @@ def build():
                  "Holding it never hurts: the icon turns orange, and when it would turn red you go in your "
                  "pants, right where you stand. Off: AN76's own pain and damage."),
         slider('Orange after (game hours)', 'Setting_OrangeHours', 0.5, 12.0, 0.5,
-               'Game hours since the need hit. Sleep does not count. Default 2.'),
+               'Game hours since the need hit. Sleep does not count. Default 3.'),
         slider('Accident after (game hours)', 'Setting_AccidentHours', 1.0, 24.0, 0.5,
-               'Game hours since the need hit. Sleep does not count. Default 4.'),
+               'Game hours since the need hit. Sleep does not count. Default 6.'),
         switcher('Panic', 'Setting_PanicOn',
                  'Everyone within 25 m screams and cowers in horror, then goes back to what they were doing. '
                  'Not your companion, and nobody fighting, hostile, in a scene or talking to you.'),
