@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.2.1 (2026-10-05)
+
+- Deep Blue Dwelling's toilet works with Advanced Needs (a tester asked for it): sit on it to go, flush when you get up.
+
 ## 1.2.0 (2026-10-02)
 
 - Calmer needs (owner): once per save, AN76's timers are set to hungry after 10 game hours (AN76: 6), thirsty after 7 (AN76: 4), and the bathroom need 1 to 5 hours after a meal (AN76: up to 3). Saves from before get it once too; anything changed in AN76's MCM afterwards stays.

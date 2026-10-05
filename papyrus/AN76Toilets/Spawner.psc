@@ -79,12 +79,98 @@ EndEvent
 
 Function Begin()
 	RegisterForRemoteEvent(Game.GetPlayer(), "OnPlayerLoadGame")
+	; Other mods' sit-on toilets (furniture, not the statics above): sitting on one is a toilet visit.
+	RegisterForRemoteEvent(Game.GetPlayer(), "OnSit")
+	RegisterForRemoteEvent(Game.GetPlayer(), "OnGetUp")
 	If _for == None
 		_for = new ObjectReference[0]
 		_spawned = new ObjectReference[0]
 	EndIf
 	StartTimer(TickSeconds, TICK_TIMER)
 EndFunction
+
+; ---- other mods' toilets --------------------------------------------------------------------------
+; A toilet another mod makes as furniture already seats you; it only lacks AN76's side. Sitting on one
+; calls AN76's EnterToilet and getting up its ExitToilet (with the flush), exactly as our seats do
+; (Seat.psc). Each is found by form id in its own plugin, so none of them is a master: a plugin that is
+; not loaded simply finds nothing.
+;   Deep Blue Dwelling (Creation Club, dbdhomeaw.esp): its 'Toilet' FURN 0x0018F6 -- asked for by the
+;   tester alasdairn, 2026-10-05 ("just sit": AN76 did not react).
+Int Property AN76_XBOX_BATHROOM_QUEST = 0x00A2C6 AutoReadOnly   ; AN76's other bathroom quest (as Seat.psc)
+
+String[] Function ForeignToiletPlugins()
+	String[] plugins = new String[1]
+	plugins[0] = "dbdhomeaw.esp"
+	Return plugins
+EndFunction
+
+Int[] Function ForeignToiletIds()
+	Int[] ids = new Int[1]
+	ids[0] = 0x0018F6
+	Return ids
+EndFunction
+
+Bool Function IsForeignToilet(ObjectReference akFurniture)
+	If !akFurniture
+		Return False
+	EndIf
+	Form base = akFurniture.GetBaseObject()
+	String[] plugins = ForeignToiletPlugins()
+	Int[] ids = ForeignToiletIds()
+	Int i = 0
+	While i < ids.Length
+		If Game.IsPluginInstalled(plugins[i]) && Game.GetFormFromFile(ids[i], plugins[i]) == base
+			Return True
+		EndIf
+		i += 1
+	EndWhile
+	Return False
+EndFunction
+
+ScriptObject Function AN76Bathroom()
+	Quest main = Game.GetFormFromFile(AN76_BATHROOM_QUEST, "Flashy_PersonalEssentials.esp") as Quest
+	If main && main.IsRunning()
+		Return main.CastAs("FlashyEssentials:Flashy_BathroomScript")
+	EndIf
+	Quest xbox = Game.GetFormFromFile(AN76_XBOX_BATHROOM_QUEST, "Flashy_PersonalEssentials.esp") as Quest
+	If xbox && xbox.IsRunning()
+		Return xbox.CastAs("FlashyEssentials:Flashy_XboxBathroomScript")
+	EndIf
+	Return None
+EndFunction
+
+Event Actor.OnSit(Actor akSender, ObjectReference akFurniture)
+	If !OnOwnRecord() || !IsForeignToilet(akFurniture)
+		Return
+	EndIf
+	ScriptObject bathroom = AN76Bathroom()
+	If bathroom
+		Debug.Trace("AN76 Toilets: sat on another mod's toilet " + akFurniture.GetBaseObject() + " - AN76 EnterToilet", 0)
+		bathroom.CallFunction("EnterToilet", new Var[0])
+	EndIf
+EndEvent
+
+Event Actor.OnGetUp(Actor akSender, ObjectReference akFurniture)
+	If !OnOwnRecord() || !IsForeignToilet(akFurniture)
+		Return
+	EndIf
+	ScriptObject bathroom = AN76Bathroom()
+	If !bathroom
+		Return
+	EndIf
+	Debug.Trace("AN76 Toilets: got up from another mod's toilet - AN76 ExitToilet (flush)", 0)
+	Quest main = Game.GetFormFromFile(AN76_BATHROOM_QUEST, "Flashy_PersonalEssentials.esp") as Quest
+	If main && main.IsRunning()
+		Var[] args = new Var[2]
+		args[0] = True
+		args[1] = akFurniture
+		bathroom.CallFunction("ExitToilet", args)
+	Else
+		Var[] args = new Var[1]   ; the Xbox bathroom's ExitToilet takes the flush only
+		args[0] = True
+		bathroom.CallFunction("ExitToilet", args)
+	EndIf
+EndEvent
 
 ; Only ever run on our own quest. A save made while a build had renumbered the plugin can hold an
 ; instance of this script on some other record (2026-09-29: on an MCM global); such an instance says so
