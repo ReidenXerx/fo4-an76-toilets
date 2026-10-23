@@ -104,6 +104,7 @@ Bool _waiting = False       ; in the Wait menu: counted in full when it ends
 Float _waitFrom = 0.0       ; game days
 Float _lastReal = 0.0       ; real seconds at the last hold tick
 Form[] _worn               ; what the player wore while the need was pending, to put back after
+Weapon _weapon             ; the weapon in hand then (1.2.2: AN76 left the hands empty)
 Float _redressCheckAt = 0.0 ; real time: when to look for clothes AN76 did not put back (0 = no check due)
 Bool _debugAccident = False  ; set by the MCM's Debug page, acted on once the menu is closed
 Bool _debugVoice = False
@@ -432,6 +433,7 @@ Event OnTimer(Int aiTimerID)
 		Form[] worn = WornNow(player)
 		If !player.HasKeyword(busy)
 			_worn = worn
+			_weapon = player.GetEquippedWeapon()
 		EndIf
 	EndIf
 	If _redressCheckAt > 0.0 && Utility.GetCurrentRealTime() >= _redressCheckAt
@@ -465,6 +467,7 @@ Event OnTimer(Int aiTimerID)
 			; Cleared without a going (an accident): what was worn then says nothing about a later visit.
 			If !isGoing && !_going && _redressCheckAt <= 0.0
 				_worn = None
+				_weapon = None
 			EndIf
 		EndIf
 		_lastStack = stack.GetValueInt()
@@ -499,6 +502,14 @@ Form[] Function WornNow(Actor akPlayer)
 EndFunction
 
 Function PutBackClothes(Actor akPlayer)
+	; The weapon too (a tester, 10-24: "after you poop the hands are becoming empty"): back in hand only if the
+	; hands are still empty and it is still carried. Holstered, as AN76 found it drawn or not.
+	Weapon wpn = _weapon
+	_weapon = None
+	If wpn && !akPlayer.GetEquippedWeapon() && akPlayer.GetItemCount(wpn) > 0
+		akPlayer.EquipItem(wpn, False, True)
+		Debug.Trace("AN76 Toilets: AN76 left the hands empty - put the weapon back", 0)
+	EndIf
 	If !_worn
 		Return
 	EndIf

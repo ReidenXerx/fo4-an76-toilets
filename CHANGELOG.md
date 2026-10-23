@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.2.2 (2026-10-24)
+
+- The weapon comes back after the toilet: if AN76 left your hands empty, the weapon you held goes back in them.
+
 ## 1.2.1 (2026-10-05)
 
 - Deep Blue Dwelling's toilet works with Advanced Needs (a tester asked for it): sit on it to go, flush when you get up.
