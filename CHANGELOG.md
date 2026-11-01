@@ -3,6 +3,8 @@
 ## 1.3.0 (2026-11-01)
 
 - Showers and bathtubs in the world wash you: scrub under the shower or at the tub with running water, and it counts as AN76's bath. A switch in MCM.
+- AN76's Hygiene System and Bathing are switched on once, like its other modules; turn them off in AN76's MCM.
+- Sanctuary's toilets, stoves and showers work with Rebuild Settlements.
 
 ## 1.2.2 (2026-10-24)
 

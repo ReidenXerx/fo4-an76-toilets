@@ -31,7 +31,9 @@ on the HUD, accidents when you hold it too long, usable world toilets and urinal
   (and the broken bathtub you can build) wash you: you stand under the shower or kneel at the tub and scrub, a
   splash and running water, and after ten seconds it is AN76's own bath, as if you had used its Fragrant Soap at
   a lake (no soap used). Walk away early and you stay dirty. The same showers in the Creation Club homes and a
-  few location mods count too. Needs AN76's Hygiene System with Bathing on.
+  few location mods count too. AN76's Hygiene System and its Bathing Needs are switched on for you once per
+  save, like its other modules; turn either off in AN76's MCM and that stays. Rebuild Settlements' scrappable
+  copies (Sanctuary's ruined showers, toilets and a stove, the Slog's shower heads) count as the vanilla ones.
 - **Leftovers** (1.1.0). A poop accident leaves AN76's own pile where you stood (green when you are sick), a pee
   accident a wet stain that fades by itself; whoever throws up leaves a pile of puke; NPCs leave a pile by a toilet
   that does not flush, and now and then a magazine. Everything cleans itself up when you leave the area.

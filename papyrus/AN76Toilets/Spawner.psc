@@ -71,7 +71,8 @@ Int _lastMask = -1    ; -1 unknown; 1 toilets on, 2 kitchens on
 Bool _bootstrapped = False
 Bool _ratesSet = False   ; AN76's timers set once for this save (a save from before 1.2.0 gets it once too)
 ObjectReference[] _locked
-Bool _hygieneHint = False   ; told this load that the showers need AN76's Hygiene System (1.3.0)
+Bool _hygieneHint = False   ; logged this load that the showers need AN76's Hygiene System (1.3.0)
+Bool _hygieneStarted = False   ; AN76's Hygiene System + Bathing switched on once for this save (1.3.0)
 Form[] _foreignBases    ; other plugins' showers and bathtubs (1.3.0), found again on every load
 Form[] _foreignSpawns
 Int Property AN76_OUTHOUSE = 0x005D23 AutoReadOnly
@@ -173,12 +174,10 @@ Bool Function BathingOn()
 		Return False
 	EndIf
 	If !hygiene.IsRunning()
-		; Bathing set On while the Hygiene System itself was never enabled (a tester, 2026-11-01): AN76's page shows
-		; its Disable button whatever the state, so it looked on. That is the same state as AN76's own Disable, so it
-		; is never switched on from here -- the player is told once per load how to.
+		; Bathing On while the Hygiene System is off: the player turned it off after StartHygiene's one time (or AN76
+		; was missing then). The same state as AN76's own Disable, so it is left alone; a log line once per load.
 		If !_hygieneHint
 			_hygieneHint = True
-			Debug.Notification("AN76 Toilets: showers need AN76's Hygiene System. Enable it in AN76's MCM.")
 			Debug.Trace("AN76 Toilets: AN76's Bathing is On but its Hygiene quest is not running - no showers", 0)
 		EndIf
 		Return False
@@ -347,6 +346,41 @@ Function Bootstrap()
 	EndIf
 EndFunction
 
+; ONCE per save (alasdairn 2026-11-01: "auto-enable hygiene and anything else AN76 Toilets uses ... they're
+; auto-enabled from install"): AN76's Hygiene System and its Bathing Needs, which the world showers wash away.
+; Exactly AN76's own MCM: its Enable button (Flashy_MCMScript.EnableHygiene) sets Flashy_NeedsHygiene_Enabled
+; to 1 and starts Flashy_HygieneMain; its "Bathing Needs Enabled" stepper is the Flashy_NeedsHygieneBathing
+; global. A save from before 1.3.0 gets it once too. Never again: a later Disable in AN76's MCM stays.
+Function StartHygiene()
+	Quest essentials = Game.GetFormFromFile(AN76_ESSENTIALS_QUEST, "Flashy_PersonalEssentials.esp") as Quest
+	Quest mq102 = Game.GetFormFromFile(MQ102_ID, "Fallout4.esm") as Quest
+	If !essentials || (mq102 && mq102.GetStage() <= 2)
+		Return   ; AN76 not installed, or still in the game's opening: try again later
+	EndIf
+	Quest hygiene = Game.GetFormFromFile(AN76_HYGIENE_QUEST, "Flashy_PersonalEssentials.esp") as Quest
+	GlobalVariable hygieneOn = Game.GetFormFromFile(AN76_HYGIENE_ON, "Flashy_PersonalEssentials.esp") as GlobalVariable
+	GlobalVariable bathingOn = Game.GetFormFromFile(AN76_BATHING_ON, "Flashy_PersonalEssentials.esp") as GlobalVariable
+	String started = ""
+	If hygiene && !hygiene.IsRunning()
+		If hygieneOn
+			hygieneOn.SetValue(1.0)
+		EndIf
+		hygiene.Start()
+		started += " the Hygiene System,"
+	EndIf
+	If bathingOn && bathingOn.GetValueInt() != 1
+		bathingOn.SetValue(1.0)
+		started += " Bathing,"
+	EndIf
+	_hygieneStarted = True
+	If started != ""
+		Debug.Notification("AN76 Toilets turned on AN76's Hygiene System and Bathing for the showers. Turn them off in AN76's MCM.")
+		Debug.Trace("AN76 Toilets: started" + started + " once for this save", 0)
+	Else
+		Debug.Trace("AN76 Toilets: AN76's Hygiene System and Bathing were already on - nothing started", 0)
+	EndIf
+EndFunction
+
 ; ONCE per save (owner 2026-10-02): AN76's hunger, thirst and bathroom timers set to ours, the way its own MCM
 ; sliders set them. Never again: whatever the player sets in AN76's MCM afterwards stays.
 Function SetRates()
@@ -378,6 +412,9 @@ Function Tick()
 	EndIf
 	If !_ratesSet
 		SetRates()
+	EndIf
+	If !_hygieneStarted
+		StartHygiene()
 	EndIf
 	LockAN76Toilets(Game.GetPlayer())
 	; Two switches: the toilets need AN76's Bathroom Needs running, the kitchens only AN76 itself (its

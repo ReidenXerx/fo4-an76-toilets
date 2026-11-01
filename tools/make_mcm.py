@@ -109,7 +109,7 @@ def build():
         switcher('Use the showers and bathtubs', 'Setting_WorldShowers',
                  "Showers and bathtubs in the world wash you: a few seconds of running water, then AN76's own "
                  "bath, as if you had used its Fragrant Soap (no soap needed). Needs AN76's Hygiene System "
-                 'with Bathing on.'),
+                 "with Bathing on: both are switched on for you once; turning them off in AN76's MCM stays."),
         {'text': 'NPCs on toilets', 'type': 'section'},
         switcher('NPCs go too', 'Setting_NpcToiletsOn',
                  'Anyone who sits down on a toilet in their own routine (a settler on a world toilet, the '
