@@ -71,6 +71,7 @@ Int _lastMask = -1    ; -1 unknown; 1 toilets on, 2 kitchens on
 Bool _bootstrapped = False
 Bool _ratesSet = False   ; AN76's timers set once for this save (a save from before 1.2.0 gets it once too)
 ObjectReference[] _locked
+Bool _hygieneHint = False   ; told this load that the showers need AN76's Hygiene System (1.3.0)
 Form[] _foreignBases    ; other plugins' showers and bathtubs (1.3.0), found again on every load
 Form[] _foreignSpawns
 Int Property AN76_OUTHOUSE = 0x005D23 AutoReadOnly
@@ -87,6 +88,7 @@ Event Actor.OnPlayerLoadGame(Actor akSender)
 		Return
 	EndIf
 	_lastMask = -1   ; say the state again on every load
+	_hygieneHint = False
 	Begin()
 EndEvent
 
@@ -167,7 +169,18 @@ EndFunction
 Bool Function BathingOn()
 	Quest hygiene = Game.GetFormFromFile(AN76_HYGIENE_QUEST, "Flashy_PersonalEssentials.esp") as Quest
 	GlobalVariable bathingOn = Game.GetFormFromFile(AN76_BATHING_ON, "Flashy_PersonalEssentials.esp") as GlobalVariable
-	If !hygiene || !hygiene.IsRunning() || !bathingOn || bathingOn.GetValueInt() != 1
+	If !hygiene || !bathingOn || bathingOn.GetValueInt() != 1
+		Return False
+	EndIf
+	If !hygiene.IsRunning()
+		; Bathing set On while the Hygiene System itself was never enabled (a tester, 2026-11-01): AN76's page shows
+		; its Disable button whatever the state, so it looked on. That is the same state as AN76's own Disable, so it
+		; is never switched on from here -- the player is told once per load how to.
+		If !_hygieneHint
+			_hygieneHint = True
+			Debug.Notification("AN76 Toilets: showers need AN76's Hygiene System. Enable it in AN76's MCM.")
+			Debug.Trace("AN76 Toilets: AN76's Bathing is On but its Hygiene quest is not running - no showers", 0)
+		EndIf
 		Return False
 	EndIf
 	GlobalVariable hygieneOn = Game.GetFormFromFile(AN76_HYGIENE_ON, "Flashy_PersonalEssentials.esp") as GlobalVariable
