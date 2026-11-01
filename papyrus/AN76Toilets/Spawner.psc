@@ -161,11 +161,21 @@ Form Function SpawnFor(Form akBase)
 EndFunction
 
 ; AN76's Hygiene System running with its Bathing Needs on: then there is a bath to take.
+; A save can hold the Hygiene quest running with its "enabled" global still 0 (a tester, 2026-11-01: showers
+; came up only after AN76's Disable/Enable buttons; Enable sets the global only when it starts the quest). The
+; quest is what counts, and the global is set to match it, as AN76's own Enable does -- its soap bath checks it.
 Bool Function BathingOn()
 	Quest hygiene = Game.GetFormFromFile(AN76_HYGIENE_QUEST, "Flashy_PersonalEssentials.esp") as Quest
-	GlobalVariable hygieneOn = Game.GetFormFromFile(AN76_HYGIENE_ON, "Flashy_PersonalEssentials.esp") as GlobalVariable
 	GlobalVariable bathingOn = Game.GetFormFromFile(AN76_BATHING_ON, "Flashy_PersonalEssentials.esp") as GlobalVariable
-	Return hygiene && hygiene.IsRunning() && hygieneOn && hygieneOn.GetValueInt() == 1 && bathingOn && bathingOn.GetValueInt() == 1
+	If !hygiene || !hygiene.IsRunning() || !bathingOn || bathingOn.GetValueInt() != 1
+		Return False
+	EndIf
+	GlobalVariable hygieneOn = Game.GetFormFromFile(AN76_HYGIENE_ON, "Flashy_PersonalEssentials.esp") as GlobalVariable
+	If hygieneOn && hygieneOn.GetValueInt() != 1
+		hygieneOn.SetValue(1.0)
+		Debug.Trace("AN76 Toilets: AN76's Hygiene quest runs with its enabled global at 0 - set to 1, as its own Enable does", 0)
+	EndIf
+	Return True
 EndFunction
 
 ; ---- other mods' toilets --------------------------------------------------------------------------
