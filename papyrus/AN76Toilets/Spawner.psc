@@ -103,40 +103,47 @@ Function Begin()
 	StartTimer(TickSeconds, TICK_TIMER)
 EndFunction
 
-; ---- other plugins' showers and bathtubs (1.3.0) ------------------------------------------------------
-; Statics another plugin adds with a vanilla shower's or bathtub's own model: the same spawn fits them. Each is
-; found by form id in its own plugin and added to TargetList, so none is a master and a plugin that is not
-; loaded finds nothing. The index is into Showers (see there).
+; ---- other plugins' copies of our targets (1.3.0) -------------------------------------------------------
+; Statics another plugin adds with a vanilla toilet's, stove's, shower's or bathtub's own model: the vanilla
+; one's spawn fits them. Each is found by form id in its own plugin and added to TargetList, so none is a master
+; and a plugin that is not loaded finds nothing. The last number is the vanilla base it copies (Fallout4.esm).
 Function FindForeignShowers()
 	_foreignBases = new Form[0]
 	_foreignSpawns = new Form[0]
-	ForeignShower("ccvltfo4001-homes.esm", 0x00016F, 5)        ; Creation Club Vault-Tec homes: bathtub (buildable)
-	ForeignShower("ccvltfo4001-homes.esm", 0x0046EC, 1)        ; ... ruined house shower
-	ForeignShower("cctosfo4001-neosky.esm", 0x00087E, 0)       ; Creation Club Neo-Sky: house shower
-	ForeignShower("cceejfo4002-nuka.esl", 0x000BB3, 1)         ; Creation Club Nuka-Cola home: ruined house shower
-	ForeignShower("AmericaRising2.esm", 0x031CEE, 0)           ; America Rising 2: the oil rig room's shower
-	ForeignShower("WCLI_Vault111.esp", 0x000892, 1)            ; Workshop Vault 111: ruined house shower
-	ForeignShower("theunmarkedvault_s4vc01.esp", 0x032102, 1)  ; The Unmarked Vault: ruined house shower
-	ForeignShower("0_Vault120.esp", 0x031EA6, 3)               ; Vault 120: decontamination shower
-	ForeignShower("0_Vault120.esp", 0x047700, 5)               ; ... bathtub
+	; Rebuild Settlements (a player in Ivy, 2026-11-01: no shower in the Sanctuary house): it swaps Sanctuary's
+	; ruined showers, toilets and stoves, and the Slog's shower heads, to scrappable copies of its own.
+	Foreign("Rebuild_SharedResources.esm", 0x000349, 0x091933)   ; PlayerHouse_Ruin_Shower01_RS_Scrap
+	Foreign("Rebuild_SharedResources.esm", 0x0003BC, 0x106953)   ; ShowerHead01A_RS_Scrap
+	Foreign("Rebuild_SharedResources.esm", 0x00034A, 0x091932)   ; PlayerHouse_Ruin_Toilet01_RS_Scrap
+	Foreign("Rebuild_SharedResources.esm", 0x0009D7, 0x035ADC)   ; a ruined stove, scrappable
+	Foreign("ccvltfo4001-homes.esm", 0x00016F, 0x02CD28)         ; Creation Club Vault-Tec homes: bathtub (buildable)
+	Foreign("ccvltfo4001-homes.esm", 0x0046EC, 0x091933)         ; ... ruined house shower
+	Foreign("cctosfo4001-neosky.esm", 0x00087E, 0x050AC1)        ; Creation Club Neo-Sky: house shower
+	Foreign("cceejfo4002-nuka.esl", 0x000BB3, 0x091933)          ; Creation Club Nuka-Cola home: ruined house shower
+	Foreign("AmericaRising2.esm", 0x031CEE, 0x050AC1)            ; America Rising 2: the oil rig room's shower
+	Foreign("WCLI_Vault111.esp", 0x000892, 0x091933)             ; Workshop Vault 111: ruined house shower
+	Foreign("theunmarkedvault_s4vc01.esp", 0x032102, 0x091933)   ; The Unmarked Vault: ruined house shower
+	Foreign("0_Vault120.esp", 0x031EA6, 0x17A75E)                ; Vault 120: decontamination shower
+	Foreign("0_Vault120.esp", 0x047700, 0x02CD28)                ; ... bathtub
 	If _foreignBases.Length > 0
-		Debug.Trace("AN76 Toilets: " + _foreignBases.Length + " showers and bathtubs from other plugins", 0)
+		Debug.Trace("AN76 Toilets: " + _foreignBases.Length + " toilets, stoves, showers and bathtubs from other plugins", 0)
 	EndIf
 EndFunction
 
-Function ForeignShower(String asPlugin, Int aiFormID, Int aiShower)
+Function Foreign(String asPlugin, Int aiFormID, Int aiVanilla)
 	If !Game.IsPluginInstalled(asPlugin)
 		Return
 	EndIf
 	Form base = Game.GetFormFromFile(aiFormID, asPlugin)
-	If !base || aiShower >= Showers.Length
+	Int index = Targets.Find(Game.GetFormFromFile(aiVanilla, "Fallout4.esm"))
+	If !base || index < 0
 		Return
 	EndIf
 	If !TargetList.HasForm(base)
 		TargetList.AddForm(base)
 	EndIf
 	_foreignBases.Add(base, 1)
-	_foreignSpawns.Add(Showers[aiShower], 1)
+	_foreignSpawns.Add(Spawns[index], 1)
 EndFunction
 
 Form Function SpawnFor(Form akBase)
