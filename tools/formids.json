@@ -139,5 +139,12 @@
  "Setting_LeftoversOn": "889",
  "Setting_PlayerReliefChance": "88A",
  "Setting_PlayerStrainChance": "88B",
- "Setting_CoffeeHours": "88C"
+ "Setting_CoffeeHours": "88C",
+ "Shower_House": "88D",
+ "Shower_HouseRuin": "88E",
+ "Shower_Head": "88F",
+ "Shower_Chemical": "890",
+ "Shower_ChemicalCeiling": "891",
+ "Shower_Tub": "892",
+ "Setting_WorldShowers": "893"
 }

@@ -1,6 +1,7 @@
 Scriptname AN76Toilets:Spawner extends Quest
 {Makes the world's toilets and urinals usable while Advanced Needs 76's Bathroom Needs are on, and
-(2026-10-02) its dead kitchen stoves and espresso machines: AN76's food prep and its Silt Bean coffee.
+(2026-10-02) its dead kitchen stoves and espresso machines: AN76's food prep and its Silt Bean coffee,
+and (1.3.0) its showers and bathtubs while AN76's Bathing Needs are on: a wash is AN76's bath.
 
 Every few seconds, near the player: each vanilla toilet or urinal (a static nothing can activate)
 gets one of our spawns on top of it -- a seat for a toilet, an activator for a urinal -- built from
@@ -27,6 +28,16 @@ Form[] Property Kitchens Auto Const Mandatory
 {The spawns that are kitchens (2026-10-02): a stove that preps food, an espresso machine that brews coffee.}
 GlobalVariable Property WorldKitchensOn Auto Const Mandatory
 {MCM: world stoves and coffee machines usable.}
+Form[] Property Showers Auto Const Mandatory
+{The spawns that are showers or bathtubs (1.3.0): a wash is AN76's bath. In this order: house shower, ruined
+house shower, shower head, decontamination shower, the same to the ceiling, bathtub.}
+GlobalVariable Property WorldShowersOn Auto Const Mandatory
+{MCM: world showers and bathtubs usable.}
+Int Property MaxShowers = 16 Auto Const
+{Of MaxSpawns, as MaxKitchens: a ruin full of bathtubs never takes the toilets' share.}
+Int Property AN76_HYGIENE_QUEST = 0x03302B AutoReadOnly   ; Flashy_HygieneMain (the Hygiene System)
+Int Property AN76_HYGIENE_ON = 0x03302A AutoReadOnly      ; GlobalVariable Flashy_NeedsHygiene_Enabled
+Int Property AN76_BATHING_ON = 0x033032 AutoReadOnly      ; GlobalVariable Flashy_NeedsHygieneBathing
 
 Float Property Radius = 1500.0 Auto Const
 Float Property TickSeconds = 3.0 Auto Const
@@ -60,6 +71,8 @@ Int _lastMask = -1    ; -1 unknown; 1 toilets on, 2 kitchens on
 Bool _bootstrapped = False
 Bool _ratesSet = False   ; AN76's timers set once for this save (a save from before 1.2.0 gets it once too)
 ObjectReference[] _locked
+Form[] _foreignBases    ; other plugins' showers and bathtubs (1.3.0), found again on every load
+Form[] _foreignSpawns
 Int Property AN76_OUTHOUSE = 0x005D23 AutoReadOnly
 Int Property AN76_POSTWAR_TOILET = 0x005D22 AutoReadOnly
 Int Property AN76_HOBO_TOILET = 0x00A2A2 AutoReadOnly
@@ -86,7 +99,66 @@ Function Begin()
 		_for = new ObjectReference[0]
 		_spawned = new ObjectReference[0]
 	EndIf
+	FindForeignShowers()
 	StartTimer(TickSeconds, TICK_TIMER)
+EndFunction
+
+; ---- other plugins' showers and bathtubs (1.3.0) ------------------------------------------------------
+; Statics another plugin adds with a vanilla shower's or bathtub's own model: the same spawn fits them. Each is
+; found by form id in its own plugin and added to TargetList, so none is a master and a plugin that is not
+; loaded finds nothing. The index is into Showers (see there).
+Function FindForeignShowers()
+	_foreignBases = new Form[0]
+	_foreignSpawns = new Form[0]
+	ForeignShower("ccvltfo4001-homes.esm", 0x00016F, 5)        ; Creation Club Vault-Tec homes: bathtub (buildable)
+	ForeignShower("ccvltfo4001-homes.esm", 0x0046EC, 1)        ; ... ruined house shower
+	ForeignShower("cctosfo4001-neosky.esm", 0x00087E, 0)       ; Creation Club Neo-Sky: house shower
+	ForeignShower("cceejfo4002-nuka.esl", 0x000BB3, 1)         ; Creation Club Nuka-Cola home: ruined house shower
+	ForeignShower("AmericaRising2.esm", 0x031CEE, 0)           ; America Rising 2: the oil rig room's shower
+	ForeignShower("WCLI_Vault111.esp", 0x000892, 1)            ; Workshop Vault 111: ruined house shower
+	ForeignShower("theunmarkedvault_s4vc01.esp", 0x032102, 1)  ; The Unmarked Vault: ruined house shower
+	ForeignShower("0_Vault120.esp", 0x031EA6, 3)               ; Vault 120: decontamination shower
+	ForeignShower("0_Vault120.esp", 0x047700, 5)               ; ... bathtub
+	If _foreignBases.Length > 0
+		Debug.Trace("AN76 Toilets: " + _foreignBases.Length + " showers and bathtubs from other plugins", 0)
+	EndIf
+EndFunction
+
+Function ForeignShower(String asPlugin, Int aiFormID, Int aiShower)
+	If !Game.IsPluginInstalled(asPlugin)
+		Return
+	EndIf
+	Form base = Game.GetFormFromFile(aiFormID, asPlugin)
+	If !base || aiShower >= Showers.Length
+		Return
+	EndIf
+	If !TargetList.HasForm(base)
+		TargetList.AddForm(base)
+	EndIf
+	_foreignBases.Add(base, 1)
+	_foreignSpawns.Add(Showers[aiShower], 1)
+EndFunction
+
+Form Function SpawnFor(Form akBase)
+	Int index = Targets.Find(akBase)
+	If index >= 0
+		Return Spawns[index]
+	EndIf
+	If _foreignBases
+		index = _foreignBases.Find(akBase)
+		If index >= 0
+			Return _foreignSpawns[index]
+		EndIf
+	EndIf
+	Return None
+EndFunction
+
+; AN76's Hygiene System running with its Bathing Needs on: then there is a bath to take.
+Bool Function BathingOn()
+	Quest hygiene = Game.GetFormFromFile(AN76_HYGIENE_QUEST, "Flashy_PersonalEssentials.esp") as Quest
+	GlobalVariable hygieneOn = Game.GetFormFromFile(AN76_HYGIENE_ON, "Flashy_PersonalEssentials.esp") as GlobalVariable
+	GlobalVariable bathingOn = Game.GetFormFromFile(AN76_BATHING_ON, "Flashy_PersonalEssentials.esp") as GlobalVariable
+	Return hygiene && hygiene.IsRunning() && hygieneOn && hygieneOn.GetValueInt() == 1 && bathingOn && bathingOn.GetValueInt() == 1
 EndFunction
 
 ; ---- other mods' toilets --------------------------------------------------------------------------
@@ -282,6 +354,8 @@ Function Tick()
 	; prepped food and its coffee). Either one changing takes everything down; the next ticks place again.
 	Bool toiletsOn = BathroomOn() && WorldToiletsOn.GetValueInt() == 1
 	Bool kitchensOn = Game.IsPluginInstalled("Flashy_PersonalEssentials.esp") && WorldKitchensOn.GetValueInt() == 1
+	; The showers (1.3.0) need AN76's Hygiene System with its Bathing Needs on.
+	Bool showersOn = WorldShowersOn.GetValueInt() == 1 && BathingOn()
 	Int mask = 0
 	If toiletsOn
 		mask += 1
@@ -289,8 +363,11 @@ Function Tick()
 	If kitchensOn
 		mask += 2
 	EndIf
+	If showersOn
+		mask += 4
+	EndIf
 	If mask != _lastMask
-		Debug.Trace("AN76 Toilets: world toilets " + toiletsOn + " (AN76's Bathroom Needs and the MCM), world kitchens " + kitchensOn, 0)
+		Debug.Trace("AN76 Toilets: world toilets " + toiletsOn + " (AN76's Bathroom Needs and the MCM), world kitchens " + kitchensOn + ", world showers " + showersOn + " (AN76's Bathing Needs and the MCM)", 0)
 		_lastMask = mask
 		RemoveAll()
 	EndIf
@@ -305,25 +382,30 @@ Function Tick()
 	Bool male = player.GetActorBase().GetSex() == 0
 	ObjectReference[] found = player.FindAllReferencesOfType(TargetList as Form, Radius)
 	Int before = _spawned.Length
-	; Two passes: the toilets and urinals first, then the kitchens, at most MaxKitchens of them.
-	Int kitchenCount = CountKitchens()
+	; Three passes: the toilets and urinals first, then the kitchens, at most MaxKitchens of them, then the
+	; showers and bathtubs, at most MaxShowers.
+	Int kitchenCount = CountOf(Kitchens)
+	Int showerCount = CountOf(Showers)
 	Int pass = 0
-	While pass < 2
+	While pass < 3
 		Int i = 0
 		While i < found.Length && _spawned.Length < MaxSpawns
 			ObjectReference target = found[i]
 			; Not a toilet shrunk to nothing: a mod hides a leftover that way (a tester, 2026-10-01: the Underground
 			; Hideout's "TOILET" floated mid-floor, the poop landed there, the real toilet stood by the wall).
 			If target && !target.IsDisabled() && _for.Find(target) < 0 && Upright(target) && target.GetScale() >= 0.5
-				Int index = Targets.Find(target.GetBaseObject())
-				If index >= 0
-					Form spawn = Spawns[index]
+				Form spawn = SpawnFor(target.GetBaseObject())
+				If spawn
 					Bool kitchen = Kitchens.Find(spawn) >= 0
-					If pass == 0 && !kitchen && toiletsOn && (male || Urinals.Find(spawn) < 0)
+					Bool shower = Showers.Find(spawn) >= 0
+					If pass == 0 && !kitchen && !shower && toiletsOn && (male || Urinals.Find(spawn) < 0)
 						Place(target, spawn)
 					ElseIf pass == 1 && kitchen && kitchensOn && kitchenCount < MaxKitchens
 						Place(target, spawn)
 						kitchenCount += 1
+					ElseIf pass == 2 && shower && showersOn && showerCount < MaxShowers
+						Place(target, spawn)
+						showerCount += 1
 					EndIf
 				EndIf
 			EndIf
@@ -332,7 +414,7 @@ Function Tick()
 		pass += 1
 	EndWhile
 	If _spawned.Length > before
-		Debug.Trace("AN76 Toilets: " + (_spawned.Length - before) + " placed (" + found.Length + " toilets, urinals, stoves and coffee machines in range, " + _spawned.Length + " live)", 0)
+		Debug.Trace("AN76 Toilets: " + (_spawned.Length - before) + " placed (" + found.Length + " toilets, urinals, stoves, coffee machines, showers and bathtubs in range, " + _spawned.Length + " live)", 0)
 	EndIf
 EndFunction
 
@@ -376,11 +458,11 @@ Function LockAN76Toilets(Actor akPlayer)
 	EndWhile
 EndFunction
 
-Int Function CountKitchens()
+Int Function CountOf(Form[] akKinds)
 	Int n = 0
 	Int i = 0
 	While i < _spawned.Length
-		If _spawned[i] && Kitchens.Find(_spawned[i].GetBaseObject()) >= 0
+		If _spawned[i] && akKinds.Find(_spawned[i].GetBaseObject()) >= 0
 			n += 1
 		EndIf
 		i += 1

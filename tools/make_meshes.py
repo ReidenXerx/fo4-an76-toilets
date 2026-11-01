@@ -35,6 +35,13 @@ MODELS = {
     r'meshes\setdressing\playerhouse_ruin\playerhouse_ruin_kitchenstove01.nif': 'KitchenStoveRuin01.nif',
     r'meshes\setdressing\playerhouse\playerhouse_kitchenstove01.nif': 'KitchenStove01.nif',
     r'meshes\setdressing\expressomachine\expresso_machine01.nif': 'EspressoMachine01.nif',
+    # World showers and bathtubs (1.3.0): a wash counts as AN76's bath.
+    r'meshes\setdressing\playerhouse\playerhouse_shower01.nif': 'HouseShower01.nif',
+    r'meshes\setdressing\playerhouse_ruin\playerhouse_ruin_shower01.nif': 'HouseRuinShower01.nif',
+    r'meshes\setdressing\showerhead\showerhead01.nif': 'ShowerHead01.nif',
+    r'meshes\setdressing\chemicalshower\chemicalshower.nif': 'ChemicalShower01.nif',
+    r'meshes\setdressing\chemicalshower\chemicalshowertoceiling.nif': 'ChemicalShowerToCeiling01.nif',
+    r'meshes\setdressing\building\bathtubbroken01.nif': 'BathtubBroken01.nif',
 }
 GEOMETRY = {'BSTriShape', 'BSSubIndexTriShape', 'BSMeshLODTriShape', 'NiTriShape', 'BSDynamicTriShape'}
 

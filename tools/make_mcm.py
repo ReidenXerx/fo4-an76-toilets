@@ -105,6 +105,11 @@ def build():
         slider('Coffee keeps you awake (hours)', 'Setting_CoffeeHours', 2.0, 12.0, 1.0,
                "A coffee or any caffeinated drink while tired keeps the tiredness away this many game hours. "
                "AN76 has it fixed at 2 and no setting; 2 here leaves AN76's alone. Default 6."),
+        {'text': 'World showers', 'type': 'section'},
+        switcher('Use the showers and bathtubs', 'Setting_WorldShowers',
+                 "Showers and bathtubs in the world wash you: a few seconds of running water, then AN76's own "
+                 "bath, as if you had used its Fragrant Soap (no soap needed). Needs AN76's Hygiene System "
+                 'with Bathing on.'),
         {'text': 'NPCs on toilets', 'type': 'section'},
         switcher('NPCs go too', 'Setting_NpcToiletsOn',
                  'Anyone who sits down on a toilet in their own routine (a settler on a world toilet, the '

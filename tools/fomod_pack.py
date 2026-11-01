@@ -48,6 +48,10 @@ FEATURES = [
      'The dead kitchen stoves in the world prep food like AN76\'s Prep Stove: all your raw meat and produce become '
      'AN76\'s prepped meat and vegetables. The espresso machines brew AN76\'s Silt Bean coffee, drunk standing at '
      'the machine. Needs only AN76, not its Bathroom Needs. A switch in MCM.'),
+    ('World showers and bathtubs', 'world-showers.png',
+     'The showers and bathtubs already in the world wash you: stand under the shower or kneel at the tub and '
+     'scrub, with running water. Ten seconds later it is AN76\'s own bath, as if you had used its Fragrant Soap '
+     '(no soap used). Needs AN76\'s Hygiene System with Bathing on. A switch in MCM.'),
     ('Leftovers', 'leftovers.png',
      'An accident leaves something behind: AN76\'s poop pile where you stood (green when you are sick), or a wet '
      'stain on the floor that fades by itself. Whoever throws up leaves a pile of puke. NPCs leave a pile by a '

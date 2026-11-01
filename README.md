@@ -27,6 +27,11 @@ on the HUD, accidents when you hold it too long, usable world toilets and urinal
 - **World kitchens** (1.1.0). The dead kitchen stoves prep food like AN76's Prep Stove (all your raw meat and
   produce become its prepped meat and vegetables), and the espresso machines brew its Silt Bean coffee, drunk
   standing at the machine. Needs only AN76, not its Bathroom Needs.
+- **World showers and bathtubs** (1.3.0). The showers, decontamination showers and bathtubs already in the world
+  (and the broken bathtub you can build) wash you: you stand under the shower or kneel at the tub and scrub, a
+  splash and running water, and after ten seconds it is AN76's own bath, as if you had used its Fragrant Soap at
+  a lake (no soap used). Walk away early and you stay dirty. The same showers in the Creation Club homes and a
+  few location mods count too. Needs AN76's Hygiene System with Bathing on.
 - **Leftovers** (1.1.0). A poop accident leaves AN76's own pile where you stood (green when you are sick), a pee
   accident a wet stain that fades by itself; whoever throws up leaves a pile of puke; NPCs leave a pile by a toilet
   that does not flush, and now and then a magazine. Everything cleans itself up when you leave the area.

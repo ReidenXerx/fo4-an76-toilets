@@ -143,6 +143,7 @@ SETTINGS = [
     ('WorldKitchens', 1.0), ('LeftoversOn', 1.0),
     ('PlayerReliefChance', 0.4), ('PlayerStrainChance', 10.0),
     ('CoffeeHours', 6.0),
+    ('WorldShowers', 1.0),
 ]
 
 # The panic. Measured 2026-09-29, one test each in Diamond City: FO4 has no way to make a CALM NPC run.
@@ -165,6 +166,27 @@ STOVES = [
 # marker) on the vanilla espresso machine. Vanilla never stands a coffee marker by one (0 pairs in
 # Fallout4.esm), so the drinker stands 55 units off the machine's -Y side facing it: tune in game.
 COFFEE = ('Espresso', 'EspressoMachine01.nif', (-44, -23, 0, 37, 30, 96), (0.0, -55.0, 0.0, 0.0))
+# World showers and bathtubs (alasdairn 2026-11-01, a player asked): a wash is AN76's bath. Hidden copies
+# of each model, as the toilets. Bounds from Fallout4.esm.
+# The wash (owner 2026-11-01: an animation and the game's own sounds): a vanilla hand-washing-like furniture
+# animation where the player stands -- standing and rubbing the hands under a shower, kneeling at a bathtub (the
+# hand-warming markers; the sink one locks the camera looking down into a basin) -- a splash, then running water
+# at the shower: a shower's stream (the small waterfall splatter loop) or a tap for a bathtub (the Sanctuary
+# bathroom's sink loop).
+SHOWER_STREAM = 0x1E4F2D  # SNDR AMBWaterfallSplatterSmallLP
+TAP_WATER = 0x1E88C8      # SNDR AMBIntChargenPlayerHouseBathroomSpotSinkLPM
+SPLASH = 0x0452CE         # SNDR PHYWaterSplash
+STAND_WASH = 0x1B40BD     # FURN NPCHandWarmingStanding
+KNEEL_WASH = 0x1B40BE     # FURN NPCHandWarmingKneeling
+# (key, mesh, bounds, name, prompt verb, water, wash furniture)
+SHOWERS = [
+    ('House', 'HouseShower01.nif', (-83, -51, -6, 83, 43, 193), 'Shower', 'Wash', SHOWER_STREAM, STAND_WASH),
+    ('HouseRuin', 'HouseRuinShower01.nif', (-83, -51, -6, 83, 43, 193), 'Shower', 'Wash', SHOWER_STREAM, STAND_WASH),
+    ('Head', 'ShowerHead01.nif', (-33, -6, -25, 0, 6, 42), 'Shower', 'Wash', SHOWER_STREAM, STAND_WASH),
+    ('Chemical', 'ChemicalShower01.nif', (-13, -74, 0, 28, 0, 185), 'Decontamination Shower', 'Wash', SHOWER_STREAM, STAND_WASH),
+    ('ChemicalCeiling', 'ChemicalShowerToCeiling01.nif', (-13, -74, 0, 28, 0, 223), 'Decontamination Shower', 'Wash', SHOWER_STREAM, STAND_WASH),
+    ('Tub', 'BathtubBroken01.nif', (-79, -29, -2, 74, 33, 44), 'Bathtub', 'Bathe', TAP_WATER, KNEEL_WASH),
+]
 KW_FURNITURE_SPECIAL = 0x0006E9C7  # FurnitureSpecial
 KW_COFFEE_DRINKING = 0x001AD806    # AnimFurnCoffeeDrinking
 MAGAZINES = [0x19569E, 0x19569F, 0x1956A0]   # MISC MagazineBurnt01-03
@@ -188,6 +210,11 @@ TARGETS = [
     (0x035ADC, 'Stove_Ruin'), (0x035ADD, 'Stove_Ruin'), (0x05DC76, 'Stove_Ruin'), (0x035ADA, 'Stove_Ruin'),
     (0x035ADB, 'Stove_Ruin'), (0x05884A, 'Stove_House'),
     (0x04CE3B, 'Coffee_Espresso'),   # Espresso_Machine01_Dirty
+    # PlayerHouse_Shower01, PlayerHouse_Ruin_Shower01, ShowerHead01, ChemicalShower01(ToCeiling),
+    # BathroomBathtubBroken01 (also built in workshops), BRBathtubBroken01. ShowerHead02 has no collision.
+    (0x050AC1, 'Shower_House'), (0x091933, 'Shower_HouseRuin'), (0x106953, 'Shower_Head'),
+    (0x17A75E, 'Shower_Chemical'), (0x17F32C, 'Shower_ChemicalCeiling'),
+    (0x02CD28, 'Shower_Tub'), (0x034A3C, 'Shower_Tub'),
 ]
 
 
@@ -323,6 +350,19 @@ def build():
         blob += field('FNAM', struct.pack('<H', 0))
         acti += record('ACTI', fid, blob)
 
+    for key, mesh, bounds, name, verb, water, wash in SHOWERS:
+        fid = new_id('Shower_' + key)
+        blob = field('EDID', zstring('AN76T_Shower_' + key))
+        blob += field('VMAD', vmad('AN76Toilets:Shower', [
+            ('Water', 1, obj(water)), ('Splash', 1, obj(SPLASH)), ('WashMarker', 1, obj(wash))]))
+        blob += field('OBND', obnd(bounds))
+        blob += field('FULL', zstring(name))
+        blob += field('MODL', zstring('AN76Toilets\\' + mesh))
+        blob += field('PNAM', bytes.fromhex('cc4c3300'))
+        blob += field('ATTX', zstring(verb))
+        blob += field('FNAM', struct.pack('<H', 0))
+        acti += record('ACTI', fid, blob)
+
     key, mesh, bounds, (x, y, z, h) = COFFEE
     fid = new_id('Coffee_' + key)
     blob = field('EDID', zstring('AN76T_Coffee_' + key))
@@ -396,6 +436,8 @@ def build():
         ('WorldToiletsOn', 1, obj(ids['Setting_WorldToilets'])),
         ('Kitchens', 11, struct.pack('<I', len(kitchen_ids)) + b''.join(obj(k) for k in kitchen_ids)),
         ('WorldKitchensOn', 1, obj(ids['Setting_WorldKitchens'])),
+        ('Showers', 11, struct.pack('<I', len(SHOWERS)) + b''.join(obj(ids['Shower_' + k]) for k, *_ in SHOWERS)),
+        ('WorldShowersOn', 1, obj(ids['Setting_WorldShowers'])),
     ]))
     quest += field('DNAM', bytes.fromhex('110064670000000000000000'))
     quest += field('NEXT', b'')

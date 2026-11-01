@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.3.0 (2026-11-01)
+
+- Showers and bathtubs in the world wash you: scrub under the shower or at the tub with running water, and it counts as AN76's bath. A switch in MCM.
+
 ## 1.2.2 (2026-10-24)
 
 - The weapon comes back after the toilet: if AN76 left your hands empty, the weapon you held goes back in them.
