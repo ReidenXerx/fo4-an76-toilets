@@ -16,8 +16,8 @@ on the HUD, accidents when you hold it too long, usable world toilets and urinal
 - **Panic.** Everyone within 25 m screams and cowers, then goes back to what they were doing (FO4 cannot make a calm
   NPC run, so they cower). An accident mid-conversation ends the conversation, and the one you were talking to
   panics too. Not your companion, and nobody fighting, hostile or in a quest scene.
-- **The aftermath.** You stink (AN76's body odour, with its bathing on) until you wash: gnats where it happened,
-  aftershock farts as you walk, people near you gag, pull a face or throw up.
+- **The aftermath.** For about a minute and a half: gnats where it happened, aftershock farts as you walk, people
+  near you gag, pull a face or throw up. With AN76's bathing on, its body odour stays until you wash.
 - **Clothes put back on.** If AN76's "go naked" leaves something off after you are done, it is put back on.
 - **World toilets and urinals.** The broken, vault and house toilets already in the world become seats you can use,
   and men can use urinals (15 vanilla models). AN76's own toilets always work.

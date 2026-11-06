@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.3.2 (2026-11-06)
+
+- The aftermath wears off by itself after about a minute and a half instead of lasting until a bath.
+
 ## 1.3.1 (2026-11-06)
 
 - Switching Aftermath or Accidents off in MCM ends a running aftermath at once: no more farts and puke while you are still soiled.

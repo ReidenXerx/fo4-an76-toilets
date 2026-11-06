@@ -48,6 +48,8 @@ Float Property GagRadius = 450.0 Auto Const
 {About 6 m: close enough to smell you.}
 Float Property StinkSeconds = 3.0 Auto Const
 {The aftermath's tick: a squelch when the player has walked, a gag every GagTicks ticks.}
+Float Property AftermathSeconds = 90.0 Auto Const
+{Owner 11-06: the farts and gagging wear off by themselves in 1-2 minutes (real time). AN76's body odour keeps its own rules.}
 Int Property GagTicks = 5 AutoReadOnly
 
 Int Property PANIC_TIMER = 1 AutoReadOnly
@@ -110,8 +112,11 @@ Event Actor.OnPlayerLoadGame(Actor akSender)
 	If Panicked.GetCount() > 0
 		EndPanic()
 	EndIf
+	; Real time starts over with the game, so a save's deadline means nothing now: a load ends the aftermath.
 	If _soiled
-		StartTimer(StinkSeconds, STINK_TIMER)
+		_soiled = False
+		UnGag()
+		Debug.Trace("AN76 Toilets: aftermath ended by the load", 0)
 	EndIf
 EndEvent
 
@@ -364,8 +369,7 @@ Function Soil(Actor akPlayer)
 		akPlayer.EquipItem(odour, False, True)
 		_odour = True
 	EndIf
-	; Without AN76's bathing there is nothing to wash it off with: it wears off in 6 game hours.
-	_soiledUntil = Utility.GetCurrentGameTime() + 0.25
+	_soiledUntil = Utility.GetCurrentRealTime() + AftermathSeconds
 	Form gnats = AN76(AN76_GNATS)
 	If gnats
 		akPlayer.PlaceAtMe(gnats, 1, False, False, True)
@@ -424,13 +428,16 @@ Bool Function AccidentsAllowed()
 	Return !watcher || watcher.AccidentsOn.GetValueInt() == 1
 EndFunction
 
+; Over after AftermathSeconds of real time, or sooner when a bath or swim washed AN76's body odour off.
 Bool Function StillSoiled(Actor akPlayer)
-	GlobalVariable bathing = AN76(AN76_BATHING_ON) as GlobalVariable
-	If _odour && bathing && bathing.GetValueInt() == 1
-		MagicEffect odour = AN76(AN76_ODOUR_EFFECT) as MagicEffect
-		Return odour && akPlayer.HasMagicEffect(odour)
+	If Utility.GetCurrentRealTime() >= _soiledUntil
+		Return False
 	EndIf
-	Return Utility.GetCurrentGameTime() < _soiledUntil
+	If _odour
+		MagicEffect odour = AN76(AN76_ODOUR_EFFECT) as MagicEffect
+		Return !odour || akPlayer.HasMagicEffect(odour)
+	EndIf
+	Return True
 EndFunction
 
 ; Every few seconds while soiled: squelching when the player has walked, and now and then someone close
@@ -448,8 +455,10 @@ Function Stink()
 	If !StillSoiled(player)
 		_soiled = False
 		UnGag()
-		Debug.Notification("You're clean again.")
-		Debug.Trace("AN76 Toilets: clean again", 0)
+		If !_odour
+			Debug.Notification("You're clean again.")
+		EndIf
+		Debug.Trace("AN76 Toilets: the aftermath wore off", 0)
 		Return
 	EndIf
 	; Aftermath or Accidents switched off in the MCM: the aftermath ends now, not when you next bathe

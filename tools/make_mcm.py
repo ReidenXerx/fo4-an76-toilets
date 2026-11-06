@@ -75,9 +75,9 @@ def build():
                  'Not your companion, and nobody fighting, hostile, in a scene or talking to you.'),
         slider('Panic length (seconds)', 'Setting_PanicSeconds', 10.0, 180.0, 5.0, 'Default 60.'),
         switcher('Aftermath', 'Setting_AftermathOn',
-                 "You stink: AN76's body odour until you bathe or swim (with AN76's bathing on; otherwise "
-                 "6 game hours). Gnats where it happened, aftershock farts as you walk, and people near you gag, "
-                 "pull a face, or throw up."),
+                 "For about a minute and a half: aftershock farts as you walk, and people near you gag, pull a "
+                 "face, or throw up. Gnats where it happened. With AN76's bathing on, you also carry AN76's body "
+                 "odour until you bathe or swim."),
         switcher('Leftovers', 'Setting_LeftoversOn',
                  "What it leaves behind: AN76's poop pile where you stood (green when you are sick), or a wet "
                  "stain on the floor that fades by itself; a pile of puke in front of anyone who throws up; "

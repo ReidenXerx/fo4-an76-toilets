@@ -32,7 +32,7 @@ FEATURES = [
      'Holding it never hurts: the toilet icon turns orange at 3 game hours and red at 6, and then you go in your '
      'pants where you stand. Sleep and fast travel do not count; waiting does.\n'
      'Everyone within 25 m screams and cowers, then goes back to what they were doing. An accident mid-conversation '
-     'ends the conversation. Afterwards you stink until you wash: gnats, aftershock farts, people gag or throw up.'),
+     'ends the conversation. Afterwards, for about a minute and a half: gnats, aftershock farts, people gag or throw up.'),
     ('NPCs use toilets too', 'npcs-use-toilets.png',
      'Anyone who sits down on a toilet in their own routine -- a settler on a world toilet, the Institute\'s '
      'toilets, Far Harbor\'s outhouses, AN76\'s built toilets -- undresses, goes, sighs and dresses again, with the '
