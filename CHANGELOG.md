@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.3.1 (2026-11-06)
+
+- Switching Aftermath or Accidents off in MCM ends a running aftermath at once: no more farts and puke while you are still soiled.
+- Bathroom sounds off now also silences an aftermath that had already started.
+
 ## 1.3.0 (2026-11-01)
 
 - Showers and bathtubs in the world wash you: scrub under the shower or at the tub with running water, and it counts as AN76's bath. A switch in MCM.

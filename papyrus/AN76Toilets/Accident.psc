@@ -303,7 +303,7 @@ Bool Function WillPanic(Actor akActor, Actor akPlayer)
 EndFunction
 
 Function Scream(Actor akActor)
-	If !_sounds
+	If !SoundsNow()
 		Return
 	EndIf
 	If akActor.GetLeveledActorBase().GetSex() == 1
@@ -409,8 +409,24 @@ Function PukePile(Actor akActor)
 	EndIf
 EndFunction
 
+; The switches as they are NOW (Toilets' Bathroom sounds + AN76's own sound settings). The accident used to
+; keep the verdict it was triggered with, so switching sounds off never reached a running aftermath.
+Bool Function SoundsNow()
+	AN76Toilets:Sounds watcher = Game.GetFormFromFile(0x00081A, "AN76_Toilets.esp") as AN76Toilets:Sounds
+	If watcher
+		Return watcher.SoundsOn()
+	EndIf
+	Return _sounds
+EndFunction
+
+Bool Function AccidentsAllowed()
+	AN76Toilets:Sounds watcher = Game.GetFormFromFile(0x00081A, "AN76_Toilets.esp") as AN76Toilets:Sounds
+	Return !watcher || watcher.AccidentsOn.GetValueInt() == 1
+EndFunction
+
 Bool Function StillSoiled(Actor akPlayer)
-	If _odour
+	GlobalVariable bathing = AN76(AN76_BATHING_ON) as GlobalVariable
+	If _odour && bathing && bathing.GetValueInt() == 1
 		MagicEffect odour = AN76(AN76_ODOUR_EFFECT) as MagicEffect
 		Return odour && akPlayer.HasMagicEffect(odour)
 	EndIf
@@ -436,11 +452,19 @@ Function Stink()
 		Debug.Trace("AN76 Toilets: clean again", 0)
 		Return
 	EndIf
-	If AftermathOn.GetValueInt() == 1
+	; Aftermath or Accidents switched off in the MCM: the aftermath ends now, not when you next bathe
+	; (11-06: a player kept farting and finding puke after switching everything off).
+	If AftermathOn.GetValueInt() == 0 || !AccidentsAllowed()
+		_soiled = False
+		UnGag()
+		Debug.Trace("AN76 Toilets: aftermath ended - switched off in the MCM", 0)
+		Return
+	EndIf
+	If True
 		Float moved = Math.Sqrt(Math.Pow(player.GetPositionX() - _lastX, 2.0) + Math.Pow(player.GetPositionY() - _lastY, 2.0))
 		_lastX = player.GetPositionX()
 		_lastY = player.GetPositionY()
-		If _sounds && moved > 120.0 && moved < 3000.0 && Utility.RandomInt(0, 2) == 0
+		If SoundsNow() && moved > 120.0 && moved < 3000.0 && Utility.RandomInt(0, 2) == 0
 			If Utility.RandomInt(0, 1) == 0
 				Body(player, FartShort, FartShortF).Play(player)
 			Else
@@ -456,7 +480,7 @@ Function Stink()
 				Puke(near, True)
 			Else
 				Face(near, FACE_DISGUST)
-				If _sounds
+				If SoundsNow()
 					If near.GetLeveledActorBase().GetSex() == 1
 						Speak(near, GagFemaleLines)
 					Else
@@ -484,7 +508,7 @@ Function Puke(Actor akActor, Bool abBendOver)
 	If abBendOver
 		akActor.PlayIdle(Vanilla(IDLE_RETCH) as Idle)
 	EndIf
-	If _sounds
+	If SoundsNow()
 		If akActor.GetLeveledActorBase().GetSex() == 1
 			Speak(akActor, PukeFemaleLines)
 		Else

@@ -8,7 +8,7 @@
   Never the dev ini: the release is built from build\data, which never holds it.
 #>
 [CmdletBinding()]
-param([switch] $Draft, [switch] $NoBuild)
+param([switch] $Draft, [switch] $NoBuild, [string] $ReuseBa2)
 
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
@@ -43,11 +43,17 @@ if (Get-ChildItem $out -Recurse -Filter *.ini) { throw 'an .ini reached the rele
 
 # The BA2: named after the plugin so the game loads it by itself; uncompressed.
 $ba2 = Join-Path $out 'AN76_Toilets - Main.ba2'
+if ($ReuseBa2) {
+    # Archive2 left with the GOG install (11-05): a script-only release may carry the last release's BA2 when the
+    # sounds, voices and meshes have not changed since it.
+    Copy-Item $ReuseBa2 $ba2
+} else {
 & $archive2 "$(Join-Path $data 'Sound'),$(Join-Path $data 'Meshes')" "-create=$ba2" "-root=$data" -format=General -compression=None -quiet
 if ($LASTEXITCODE -or -not (Test-Path $ba2)) { throw 'Archive2 did not write the BA2' }
 $loose = (Get-ChildItem (Join-Path $data 'Sound'), (Join-Path $data 'Meshes') -Recurse -File | Measure-Object Length -Sum).Sum
 $packed = (Get-Item $ba2).Length
 if ($packed -lt $loose) { throw "the BA2 ($packed bytes) is smaller than what went in ($loose): compressed or incomplete" }
+}
 
 $docs = Join-Path $out 'Docs\AN76Toilets'
 New-Item -ItemType Directory -Force $docs | Out-Null
